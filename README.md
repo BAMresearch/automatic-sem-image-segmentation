@@ -15,7 +15,7 @@ Folder Structure:
 	- **Other Scripts:** Contains scripts for calculating the various metrics discussed in the publication.
 	- **Trained Neural Network Models:** Contains the fully trained neural networks for SEM image segmentation trained on simulated and manually annotated masks as well as the fully trained classification network trained on manually annotated classes for the masks, as discussed in the publication.
   * **Automatic_SEM_Image_Segmentation:** Contains the most current implementation of the workflow, including improvements, new features, updates, bug fixes, etc.
-  * **Datasets:** Contains the datasets used in the publication. It has the following subfolders:
+  * **Datasets:** Contains the datasets used in the publication. it is also available via [Zenodo](https://zenodo.org/record/4563942) (DOI: 10.5281/zenodo.4563942). It has the following subfolders:
     - **Electron Microscopy Image Masks:** Contains the manually annotated segmentation and classification masks for the SEM images.
     - **Electron Microscopy Images:** Contains the raw, unprocessed SEM and TSEM images used in the publication
   * **ImageJ Plugin:** Contains an ImageJ Plugin (beta version) that allows to use the fully trained neural networks in inference mode as well as some basic filters directly from ImageJ
@@ -42,6 +42,11 @@ scipy
 opencv_python  
 tqdm  
 opensimplex  
+
+Examples:
+---------
+The following images illustrate a few examples of particles consisiting of different materials (Au, TiO2, BaSO4, TiO2, FeOx) and imaged with different techniques (SEM, eSEM, TEM), and their segmentation masks that were obtained automatically using the above algorithm (or slight variations thereof).
+![Image](./Examples.gif "Examples")
 
 Licenses:
 ---------

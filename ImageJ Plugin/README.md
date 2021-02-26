@@ -14,10 +14,11 @@ The Plug-In was stable and performed as expected in our hands, but was not teste
 
 Installation
 ----------------
-  1. Install Tensoflow for ImageJ (*ImageJ* -> *Help* -> *Update…* -> *Manage Update Sites*) and close ImageJ.
+The plugin and installation instructions were tested on the 64 bit FIJI distribution of ImageJ, available [here](https://imagej.net/Fiji/Downloads).
+  1. Install Tensoflow for ImageJ (*ImageJ* -> *Help* -> *Update…* -> *Manage Update Sites*) and close ImageJ (do not restart yet).
   ![Image](./Installation_Instructions/Installation1.jpg "Installation Step 1")
   2. Copy the plugin (`SEM_Particle_Segmentation.jar`) and the entire folder (not the individual files) containing the trained neural networks (`SEM_Particle_Segmentation_Models`) into the `plugins` directory of ImageJ (e.g., `C:\user\<user>\Fiji.app\plugins`).
-  3. Update ImageJ (*Help* -> *Update ImageJ*) and restart (probably a bug, some functionality seems to be lost when updating to TensorFlow, which can be restored that way). The plugin can be found under *Plugins* -> *SEM Particle Segmentation*.
+  3. Restart ImageJ, update it to the latest version (*Help* -> *Update ImageJ*) and restart again (probably a bug, some functionality seems to be lost when updating to TensorFlow, which can be restored that way). The plugin can be found under *Plugins* -> *SEM Particle Segmentation*.
   ![Image](./Installation_Instructions/Installation2.jpg "Installation Step 3")
 
 How to use:
