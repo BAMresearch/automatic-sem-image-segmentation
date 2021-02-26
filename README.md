@@ -45,7 +45,7 @@ opensimplex
 
 Examples:
 ---------
-The following images illustrate a few examples of particles consisiting of different materials (Au, TiO2, BaSO4, TiO2, FeOx) and imaged with different techniques (SEM, eSEM, TEM), and their segmentation masks that were obtained automatically using the above algorithm (or slight variations thereof).
+The following images illustrate a few examples of particles consisiting of different materials (Au, TiO2, BaSO4, SiO2, FeOx) and imaged with different techniques (SEM, eSEM, TEM), and their segmentation masks that were obtained automatically using the above algorithm (or slight variations thereof).
 ![Image](./Examples.gif "Examples")
 
 Licenses:
