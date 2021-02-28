@@ -12,7 +12,8 @@
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  *  */
- 
+
+
 import ij.*;
 import ij.process.*;
 import ij.gui.*;
@@ -60,7 +61,6 @@ import java.awt.Insets;
 
 import java.awt.GraphicsEnvironment;
 import java.awt.GraphicsDevice;
-
 
 /**
  * Main class implementing the ImageJ PlugIn Class
@@ -251,32 +251,33 @@ public class SEM_Particle_Segmentation implements PlugIn {
 	 * Multiple filters are combined with "AND".
 	 *
 	 * @param  filterName {@code String} identifying which value should be filtered
-	 * 		   (can be one of "Min Feret", "Min Area", "Min Solidity", "Min Circularity", or "Min MeanIntensity")
-	 * @param  filterValue {@code float} value of the filter
+	 * 		   (can be one of "Min Feret", "Area", "Solidity", "Circularity", or "MeanIntensity")
+	 * @param  filterValueLow {@code float} lower bound value of the filter
+	 * @param  filterValueHigh {@code float} upper bound value of the filter
 	 * @since 1.8
 	 */
-	private void applyFilterSettings(String filterName, float filterValue) {
+	private void applyFilterSettings(String filterName, float filterValueLow, float filterValueHigh) {
 		Overlay filteredRoisOverlay = new Overlay();
 		Overlay allRoisOverlayColored = new Overlay();
 		int j = 0;
 		for (int i=0; i<allRois.length; i++) {
 			if (filterName == "Min Feret") {
-				filterFerets[i] = (boolean)(allFerets[i] > filterValue);
+				filterFerets[i] = (boolean)(allFerets[i] >= filterValueLow && allFerets[i] <= filterValueHigh);
 			}
-			if (filterName == "Min Area") {
-				filterAreas[i] = (boolean)(allAreas[i] > filterValue);
+			if (filterName == "Area") {
+				filterAreas[i] = (boolean)(allAreas[i] >= filterValueLow && allAreas[i] <= filterValueHigh);
 			}
-			if (filterName == "Min Solidity") {
-				filterSolidities[i] = (boolean)(allSolidities[i] > filterValue);
+			if (filterName == "Solidity") {
+				filterSolidities[i] = (boolean)(allSolidities[i] >= filterValueLow && allSolidities[i] <= filterValueHigh);
 			}
-			if (filterName == "Min Circularity") {
-				filterCircularities[i] = (boolean)(allCircularities[i] > filterValue);
+			if (filterName == "Circularity") {
+				filterCircularities[i] = (boolean)(allCircularities[i] >= filterValueLow && allCircularities[i] <= filterValueHigh);
 			}
-			if (filterName == "Min MeanIntensity") {
-				filterMeans[i] = (boolean)(allMeans[i] > filterValue);
+			if (filterName == "MeanIntensity") {
+				filterMeans[i] = (boolean)(allMeans[i] >= filterValueLow && allMeans[i] <= filterValueHigh);
 			}
 			if (filterName == "Classes") {
-				filterClasses[i] = (boolean)(allClasses[i] > filterValue);
+				filterClasses[i] = (boolean)(allClasses[i] >= filterValueLow);
 			}
 			
 			if ((filterFerets[i] && filterAreas[i] && filterSolidities[i] && filterCircularities[i] && filterMeans[i] && filterClasses[i])) {
@@ -309,7 +310,6 @@ public class SEM_Particle_Segmentation implements PlugIn {
 			updateHistogram(new float[0]);
 		}
 	}
-	
 
 	/**
 	 * Uses the ImageJ Particle Analyzer on a thresholded image. 
@@ -324,7 +324,7 @@ public class SEM_Particle_Segmentation implements PlugIn {
 		if (roiMgr != null) {
 			roiMgr.reset();			
 		}
-		int pAOptions = (ParticleAnalyzer.SHOW_RESULTS | ParticleAnalyzer.EXCLUDE_EDGE_PARTICLES | ParticleAnalyzer.ADD_TO_MANAGER);
+		int pAOptions = (ParticleAnalyzer.SHOW_RESULTS | ParticleAnalyzer.EXCLUDE_EDGE_PARTICLES | ParticleAnalyzer.ADD_TO_MANAGER); //ParticleAnalyzer.SHOW_OVERLAY_OUTLINES
 		int pAMeasurements = (ij.measure.Measurements.AREA | ij.measure.Measurements.CIRCULARITY | ij.measure.Measurements.ELLIPSE | ij.measure.Measurements.FERET | ij.measure.Measurements.MEAN | ij.measure.Measurements.MEDIAN | ij.measure.Measurements.MIN_MAX | ij.measure.Measurements.PERIMETER);
 		ResultsTable resultsTableMask = new ResultsTable();
 		double pAMinSize = 0.0d;
@@ -428,7 +428,7 @@ public class SEM_Particle_Segmentation implements PlugIn {
 				// Create image from Neural Network Output Tensor
 				IJ.showStatus("Creating Image from Output Tensor...");
 				logTextWindow.getTextPanel().append("Creating Image from Output Tensor...");
-				predicted = tensorToImage(outputImage, 32);
+				predicted = tensorToImage(outputImage, 32, 2);
 				predicted.setCalibration(inputImage.getCalibration());
 				predicted.show();
 				// Do thresholding and watershed of predicted Image
@@ -441,7 +441,9 @@ public class SEM_Particle_Segmentation implements PlugIn {
 				IJ.showStatus("Analyzing Particles...");
 				logTextWindow.getTextPanel().append("Analyzing Particles...");
 				doAnalysis();
-				applyFilterSettings("Min Feret", 0.0f);
+				applyFilterSettings("Circularity", 0.0f, 1.0f);
+				// Layout Windows
+				//layoutWindows();
 
 				IJ.showStatus("Done with Segmentation");
 				logTextWindow.getTextPanel().append("Done with Segmentation");
@@ -510,7 +512,7 @@ public class SEM_Particle_Segmentation implements PlugIn {
 				// Create image from Neural Network Output Tensor
 				IJ.showStatus("Creating Image from Output Tensor...");
 				logTextWindow.getTextPanel().append("Creating Image from Output Tensor...");
-				classified = tensorToImage(outputImage, 24);
+				classified = tensorToImage(outputImage, 24, 2);
 				classified.setCalibration(inputImage.getCalibration());
 				classified.show();
 				// Apply Filter Settings according to Particle Class
@@ -527,10 +529,11 @@ public class SEM_Particle_Segmentation implements PlugIn {
 						allClasses[i] = allMeans[i];
 					}
 				}
-				//resultsTableImage.reset();
 				roiMgr.runCommand(inputImage, "Measure");
 
-				applyFilterSettings("Classes", minThresholdAutoFilter);
+				applyFilterSettings("Classes", minThresholdAutoFilter, minThresholdAutoFilter);
+				// Layout Windows
+				//layoutWindows();
 
 				IJ.showStatus("Done with Auto-Filtering");
 				logTextWindow.getTextPanel().append("Done with Auto-Filtering");
@@ -578,14 +581,14 @@ public class SEM_Particle_Segmentation implements PlugIn {
 			if (noOfXTiles > 1) {
 				offsetX = (int)Math.ceil(i*(inputWidth - ((inputWidth*noOfXTiles - imageWidth)/(noOfXTiles-1))));
 			} else {
-					offsetX = 0;
+				offsetX = 0;
 			}
 			for (int j = 0; j < noOfYTiles; j++) {
 				if (noOfYTiles > 1) {
 					offsetY = (int)Math.ceil(j*(inputHeight - ((inputHeight*noOfYTiles - imageHeight)/(noOfYTiles-1))));
 				} else {
-						offsetY = 0;
-					}
+					offsetY = 0;
+				}
 				for (int x = 0; x < inputWidth; x++) {
 					for (int y = 0; y < inputHeight; y++) {
 							if (x + offsetX >= imageWidth || y + offsetY>= imageHeight) { // if input Tensor is larger than image fill with 0
@@ -647,22 +650,38 @@ public class SEM_Particle_Segmentation implements PlugIn {
 	/**
 	 * Converts a TensorFlow tensor back to an image.
 	 * If the tensor contains a batch of tiles, they are reassembled into a seamless image
-	 * by averaging overlapping areas.
+	 * by taking the maximum, averaging, or cropping overlapping areas.
 	 * 
 	 * @param  result {@code Tensor<Float>} object to be converted to an image (assuming CHANNELS_LAST)
+	 * @param  bitDepth {@code int} bit depth of the resulting image (32 for raw output, 24 for classification results)
+	 * @param  manageOverlapMode {@code int} 0: maximum, 1: average, 2: crop)
 	 * @return {@code ImagePlus} object containing the data from the input tensor as pixel data.
 	 * @since 1.8
 	 */
-	private ImagePlus tensorToImage(Tensor<Float> result, int bitDepth) {
+	private ImagePlus tensorToImage(Tensor<Float> result, int bitDepth, int manageOverlapMode) {
 		ImagePlus predicted = null;
 		float[][][][] outputImage = result.copyTo(new float[(int)result.shape()[0]][(int)result.shape()[1]][(int)result.shape()[2]][(int)result.shape()[3]]);
 		int noOfXTiles = (int)Math.ceil((float)imageWidth/inputWidth);
 		int noOfYTiles = (int)Math.ceil((float)imageHeight/inputHeight);
+		float curVal = 0.f;
+		int overlapSizeX = 0;
+		int overlapSizeY = 0;
+		if (noOfXTiles > 1) {
+			overlapSizeX = (int)((inputWidth * noOfXTiles - imageWidth) / (2.0*(noOfXTiles - 1)));
+		}
+		if (noOfYTiles > 1) {
+			overlapSizeY = (int)((inputHeight * noOfYTiles - imageHeight) / (2.0*(noOfYTiles - 1)));
+		}
+		int cxl = 0; // left crop
+		int cxr = 0; // right crop
+		int cyt = 0; // top crop
+		int cyb = 0; // bottom crop
+		
 		// If more than 1 tile has to be used introduce at least 2 pixel overlap between tiles to avoid seams:
 		if ((noOfXTiles > 1) && ((inputWidth - (imageWidth % inputWidth)) % inputWidth <= 2)) {
 			noOfXTiles += 1;
 		}
-		if ((noOfYTiles > 1) && ((inputHeight - (imageHeight % inputHeight))	% inputHeight <= 2)) {
+		if ((noOfYTiles > 1) && ((inputHeight - (imageHeight % inputHeight)) % inputHeight <= 2)) {
 			noOfYTiles += 1;
 		}
 		float[][] pix = new float[imageWidth][imageHeight];
@@ -674,34 +693,65 @@ public class SEM_Particle_Segmentation implements PlugIn {
 			if (noOfXTiles > 1) {
 				offsetX = (int)Math.ceil(i*(inputWidth - ((inputWidth*noOfXTiles - imageWidth)/(noOfXTiles-1))));
 			} else {
-					offsetX = 0;
+				offsetX = 0;
 			}
 			for (int j = 0; j < noOfYTiles; j++) {
 				if (noOfYTiles > 1) {
 					offsetY = (int)Math.ceil(j*(inputHeight - ((inputHeight*noOfYTiles - imageHeight)/(noOfYTiles-1))));
 				} else {
-						offsetY = 0;
+					offsetY = 0;
 				}
 				for (int x = 1; x < inputWidth-1; x++) { // Discard "border pixels" (start at 1, finish at inputWidth -1)
 					for (int y = 1; y < inputHeight-1; y++) {	// Discard "border pixels" (start at 1, finish at inputHeight -1)
-							if (x + offsetX >= imageWidth || y + offsetY >= imageHeight) { // if input Tensor is larger than image ignore output
-								continue;
+						if (x + offsetX >= imageWidth || y + offsetY >= imageHeight) { // if input Tensor is larger than image ignore output
+							continue;
+						} else {
+							if (bitDepth == 32) {
+								curVal = (float)(outputImage[k][x][y][this.outputChannels]);
 							} else {
-								if (bitDepth == 32) {
-									pix[x + offsetX][y + offsetY] += outputImage[k][x][y][this.outputChannels];
-								} else {
-									pix[x + offsetX][y + offsetY] += 0.1*outputImage[k][x][y][0]+0.9*outputImage[k][x][y][1]+0.5*outputImage[k][x][y][2];									
-								}
-								overlaps[x + offsetX][y + offsetY] += 1;
+								curVal = (float)(0.1*outputImage[k][x][y][0]+0.9*outputImage[k][x][y][1]+0.5*outputImage[k][x][y][2]);
 							}
+							if (manageOverlapMode == 0) {  // Take maximum in overlapping regions
+								pix[x + offsetX][y + offsetY] = Math.max(curVal, pix[x + offsetX][y + offsetY]);
+							} else if (manageOverlapMode == 1) {  // Average overlapping regions
+								pix[x + offsetX][y + offsetY] += curVal;
+								overlaps[x + offsetX][y + offsetY] += 1;
+							} else if (manageOverlapMode == 2) { // Crop overlapping regions
+								if ((i == 0) && (x > inputWidth-overlapSizeX)){
+									x += overlapSizeX-1;
+									break;
+								} else if ((i == noOfXTiles - 1) && (x < overlapSizeX)) {
+									x += overlapSizeX-1;
+									break;
+								} else if (((i > 0) && (i < noOfXTiles - 1)) && ((x < overlapSizeX) || (x > inputWidth-overlapSizeX))){
+									x += overlapSizeX-1;
+									break;
+								}
+								if ((j == 0) && (y > inputHeight-overlapSizeY)){
+									y += overlapSizeY-1;
+									continue;
+								} else if ((j == noOfYTiles - 1) && (y < overlapSizeY)) {
+									y += overlapSizeY-1;
+									continue;
+								} else if (((j > 0) && (j < noOfYTiles - 1)) && ((y < overlapSizeY) || (y > inputHeight-overlapSizeY))){
+									y += overlapSizeY-1;
+									continue;
+								}
+								pix[x + offsetX][y + offsetY] = curVal;
+							}
+						}
 					}
 				}
 				k++;
 			}
 		}
-		for (int x = 0; x < imageWidth; x++) {
-			for (int y = 0; y < imageHeight; y++) {
-					pix[x][y] /= (float)overlaps[x][y];
+		
+		if (manageOverlapMode == 1) {
+			// Average overlapping regions
+			for (int x = 0; x < imageWidth; x++) {
+				for (int y = 0; y < imageHeight; y++) {
+						pix[x][y] /= (float)overlaps[x][y];
+				}
 			}
 		}
 		
@@ -866,6 +916,7 @@ public class SEM_Particle_Segmentation implements PlugIn {
 	private JFrame initializeGUI() {
 		double nRows = 14.d;
 		JFrame frmSemParticleSegmentation = new JFrame();
+		//frmSemParticleSegmentation.setLocationByPlatform(true);
 		frmSemParticleSegmentation.getContentPane().setSize(new Dimension(288, 420));
 		frmSemParticleSegmentation.setName("GUI_Frame");
 		frmSemParticleSegmentation.setTitle("SEM Particle Segmentation");
@@ -979,18 +1030,20 @@ public class SEM_Particle_Segmentation implements PlugIn {
 		gbc_lblNewLabel_3_1.gridy = 6;
 		frmSemParticleSegmentation.getContentPane().add(lblNewLabel_3_1, gbc_lblNewLabel_3_1);
 		
-		JSlider sliderMinArea = new JSlider();
-		sliderMinArea.setValue(0);
-		sliderMinArea.setEnabled(true);
-		GridBagConstraints gbc_sliderMinArea = new GridBagConstraints();
-		gbc_sliderMinArea.fill = GridBagConstraints.BOTH;
-		gbc_sliderMinArea.insets = new Insets(0, 0, 5, 5);
-		gbc_sliderMinArea.gridx = 2;
-		gbc_sliderMinArea.gridy = 8;
-		frmSemParticleSegmentation.getContentPane().add(sliderMinArea, gbc_sliderMinArea);
+		RangeSlider sliderArea = new RangeSlider();
+		sliderArea.setValue(0);
+		sliderArea.setUpperValue(100);
+		sliderArea.setEnabled(true);
+		GridBagConstraints gbc_sliderArea = new GridBagConstraints();
+		gbc_sliderArea.fill = GridBagConstraints.BOTH;
+		gbc_sliderArea.insets = new Insets(0, 0, 5, 5);
+		gbc_sliderArea.gridx = 2;
+		gbc_sliderArea.gridy = 8;
+		frmSemParticleSegmentation.getContentPane().add(sliderArea, gbc_sliderArea);
 		
-		JSlider sliderMinFeret = new JSlider();
+		RangeSlider sliderMinFeret = new RangeSlider();
 		sliderMinFeret.setValue(0);
+		sliderMinFeret.setUpperValue(100);
 		sliderMinFeret.setEnabled(true);
 		GridBagConstraints gbc_sliderMinFeret = new GridBagConstraints();
 		gbc_sliderMinFeret.fill = GridBagConstraints.BOTH;
@@ -999,7 +1052,7 @@ public class SEM_Particle_Segmentation implements PlugIn {
 		gbc_sliderMinFeret.gridy = 7;
 		frmSemParticleSegmentation.getContentPane().add(sliderMinFeret, gbc_sliderMinFeret);
 		
-		JLabel lblNewLabel_2_2 = new JLabel("Min Feret:");
+		JLabel lblNewLabel_2_2 = new JLabel("Min Feret Diameter:");
 		GridBagConstraints gbc_lblNewLabel_2_2 = new GridBagConstraints();
 		gbc_lblNewLabel_2_2.fill = GridBagConstraints.BOTH;
 		gbc_lblNewLabel_2_2.insets = new Insets(0, 0, 5, 5);
@@ -1007,7 +1060,7 @@ public class SEM_Particle_Segmentation implements PlugIn {
 		gbc_lblNewLabel_2_2.gridy = 7;
 		frmSemParticleSegmentation.getContentPane().add(lblNewLabel_2_2, gbc_lblNewLabel_2_2);
 		
-		JLabel lblNewLabel_2_2_1 = new JLabel("Min Area:");
+		JLabel lblNewLabel_2_2_1 = new JLabel("Area:");
 		GridBagConstraints gbc_lblNewLabel_2_2_1 = new GridBagConstraints();
 		gbc_lblNewLabel_2_2_1.fill = GridBagConstraints.BOTH;
 		gbc_lblNewLabel_2_2_1.insets = new Insets(0, 0, 5, 5);
@@ -1015,7 +1068,7 @@ public class SEM_Particle_Segmentation implements PlugIn {
 		gbc_lblNewLabel_2_2_1.gridy = 8;
 		frmSemParticleSegmentation.getContentPane().add(lblNewLabel_2_2_1, gbc_lblNewLabel_2_2_1);
 		
-		JLabel lblNewLabel_2_2_1_1 = new JLabel("Min Solidity:");
+		JLabel lblNewLabel_2_2_1_1 = new JLabel("Solidity:");
 		GridBagConstraints gbc_lblNewLabel_2_2_1_1 = new GridBagConstraints();
 		gbc_lblNewLabel_2_2_1_1.fill = GridBagConstraints.BOTH;
 		gbc_lblNewLabel_2_2_1_1.insets = new Insets(0, 0, 5, 5);
@@ -1023,17 +1076,18 @@ public class SEM_Particle_Segmentation implements PlugIn {
 		gbc_lblNewLabel_2_2_1_1.gridy = 9;
 		frmSemParticleSegmentation.getContentPane().add(lblNewLabel_2_2_1_1, gbc_lblNewLabel_2_2_1_1);
 		
-		JSlider sliderMinSolidity = new JSlider();
-		sliderMinSolidity.setValue(0);
-		sliderMinSolidity.setEnabled(true);
-		GridBagConstraints gbc_sliderMinSolidity = new GridBagConstraints();
-		gbc_sliderMinSolidity.fill = GridBagConstraints.BOTH;
-		gbc_sliderMinSolidity.insets = new Insets(0, 0, 5, 5);
-		gbc_sliderMinSolidity.gridx = 2;
-		gbc_sliderMinSolidity.gridy = 9;
-		frmSemParticleSegmentation.getContentPane().add(sliderMinSolidity, gbc_sliderMinSolidity);
+		RangeSlider sliderSolidity = new RangeSlider();
+		sliderSolidity.setValue(0);
+		sliderSolidity.setUpperValue(100);
+		sliderSolidity.setEnabled(true);
+		GridBagConstraints gbc_sliderSolidity = new GridBagConstraints();
+		gbc_sliderSolidity.fill = GridBagConstraints.BOTH;
+		gbc_sliderSolidity.insets = new Insets(0, 0, 5, 5);
+		gbc_sliderSolidity.gridx = 2;
+		gbc_sliderSolidity.gridy = 9;
+		frmSemParticleSegmentation.getContentPane().add(sliderSolidity, gbc_sliderSolidity);
 		
-		JLabel lblNewLabel_2_2_1_1_1 = new JLabel("Min Circularity:");
+		JLabel lblNewLabel_2_2_1_1_1 = new JLabel("Circularity:");
 		GridBagConstraints gbc_lblNewLabel_2_2_1_1_1 = new GridBagConstraints();
 		gbc_lblNewLabel_2_2_1_1_1.fill = GridBagConstraints.BOTH;
 		gbc_lblNewLabel_2_2_1_1_1.insets = new Insets(0, 0, 5, 5);
@@ -1041,17 +1095,18 @@ public class SEM_Particle_Segmentation implements PlugIn {
 		gbc_lblNewLabel_2_2_1_1_1.gridy = 10;
 		frmSemParticleSegmentation.getContentPane().add(lblNewLabel_2_2_1_1_1, gbc_lblNewLabel_2_2_1_1_1);
 		
-		JSlider sliderMinCircularity = new JSlider();
-		sliderMinCircularity.setValue(0);
-		sliderMinCircularity.setEnabled(true);
-		GridBagConstraints gbc_sliderMinCircularity = new GridBagConstraints();
-		gbc_sliderMinCircularity.fill = GridBagConstraints.BOTH;
-		gbc_sliderMinCircularity.insets = new Insets(0, 0, 5, 5);
-		gbc_sliderMinCircularity.gridx = 2;
-		gbc_sliderMinCircularity.gridy = 10;
-		frmSemParticleSegmentation.getContentPane().add(sliderMinCircularity, gbc_sliderMinCircularity);
+		RangeSlider sliderCircularity = new RangeSlider();
+		sliderCircularity.setValue(0);
+		sliderCircularity.setUpperValue(100);
+		sliderCircularity.setEnabled(true);
+		GridBagConstraints gbc_sliderCircularity = new GridBagConstraints();
+		gbc_sliderCircularity.fill = GridBagConstraints.BOTH;
+		gbc_sliderCircularity.insets = new Insets(0, 0, 5, 5);
+		gbc_sliderCircularity.gridx = 2;
+		gbc_sliderCircularity.gridy = 10;
+		frmSemParticleSegmentation.getContentPane().add(sliderCircularity, gbc_sliderCircularity);
 		
-		JLabel lblNewLabel_2_2_1_1_1_1 = new JLabel("Min Mean Intensity:");
+		JLabel lblNewLabel_2_2_1_1_1_1 = new JLabel("Mean Intensity:");
 		GridBagConstraints gbc_lblNewLabel_2_2_1_1_1_1 = new GridBagConstraints();
 		gbc_lblNewLabel_2_2_1_1_1_1.anchor = GridBagConstraints.WEST;
 		gbc_lblNewLabel_2_2_1_1_1_1.insets = new Insets(0, 0, 5, 5);
@@ -1059,15 +1114,16 @@ public class SEM_Particle_Segmentation implements PlugIn {
 		gbc_lblNewLabel_2_2_1_1_1_1.gridy = 11;
 		frmSemParticleSegmentation.getContentPane().add(lblNewLabel_2_2_1_1_1_1, gbc_lblNewLabel_2_2_1_1_1_1);
 		
-		JSlider sliderMinMeanIntensity = new JSlider();
-		sliderMinMeanIntensity.setValue(0);
-		sliderMinMeanIntensity.setEnabled(true);
-		GridBagConstraints gbc_sliderMinMeanIntensity = new GridBagConstraints();
-		gbc_sliderMinMeanIntensity.fill = GridBagConstraints.BOTH;
-		gbc_sliderMinMeanIntensity.insets = new Insets(0, 0, 5, 5);
-		gbc_sliderMinMeanIntensity.gridx = 2;
-		gbc_sliderMinMeanIntensity.gridy = 11;
-		frmSemParticleSegmentation.getContentPane().add(sliderMinMeanIntensity, gbc_sliderMinMeanIntensity);
+		RangeSlider sliderMeanIntensity = new RangeSlider();
+		sliderMeanIntensity.setValue(0);
+		sliderMeanIntensity.setUpperValue(100);
+		sliderMeanIntensity.setEnabled(true);
+		GridBagConstraints gbc_sliderMeanIntensity = new GridBagConstraints();
+		gbc_sliderMeanIntensity.fill = GridBagConstraints.BOTH;
+		gbc_sliderMeanIntensity.insets = new Insets(0, 0, 5, 5);
+		gbc_sliderMeanIntensity.gridx = 2;
+		gbc_sliderMeanIntensity.gridy = 11;
+		frmSemParticleSegmentation.getContentPane().add(sliderMeanIntensity, gbc_sliderMeanIntensity);
 		
 		JLabel lblAutoFilterThreshold = new JLabel("Auto-Filter Threshold:");
 		GridBagConstraints gbc_lblAutoFilterThreshold = new GridBagConstraints();
@@ -1127,8 +1183,8 @@ public class SEM_Particle_Segmentation implements PlugIn {
 					imp = IJ.getImage();
 				}
 				
-				if (imp.getBitDepth() != 8) {
-					if (!IJ.showMessageWithCancel("SEM Particle Segmentation", "Image " + imp.getTitle() + " is not an 8-bit grayscale Image. Convert?")) {
+				if (imp.getBitDepth() != 8 && imp.getBitDepth() != 16) {
+					if (!IJ.showMessageWithCancel("SEM Particle Segmentation", "Image " + imp.getTitle() + " is not an 8 or 16-bit grayscale Image. Convert?")) {
 						return;
 					} else {
 						// Convert to 8 bit grayscale
@@ -1148,10 +1204,16 @@ public class SEM_Particle_Segmentation implements PlugIn {
 							}
 							
 							sliderMinFeret.setValue(0);
-							sliderMinArea.setValue(0);
-							sliderMinSolidity.setValue(0);
-							sliderMinCircularity.setValue(0);
-							sliderMinMeanIntensity.setValue(0);
+							sliderArea.setValue(0);
+							sliderSolidity.setValue(0);
+							sliderCircularity.setValue(0);
+							sliderMeanIntensity.setValue(0);
+							sliderMinFeret.setUpperValue(100);
+							sliderArea.setUpperValue(100);
+							sliderSolidity.setUpperValue(100);
+							sliderCircularity.setUpperValue(100);
+							sliderMeanIntensity.setUpperValue(100);
+
 							sliderAutoFilterThreshold.setValue(50);
 						} catch (Exception e) {
 							e.printStackTrace();
@@ -1163,7 +1225,7 @@ public class SEM_Particle_Segmentation implements PlugIn {
 		
 		comboBox.addItemListener(new ItemListener() {
 			public void itemStateChanged(ItemEvent e) {
-				if (e.getStateChange() == e.SELECTED) { //ItemListener fires twice: once for deselecting the old entry and once for selkecting the new entry
+				if (e.getStateChange() == e.SELECTED) { //ItemListener fires twice: once for deselecting the old entry and once for selecting the new entry
 					logSetting("Model", comboBox.getSelectedItem().toString());
 					modelSelection = comboBox.getSelectedItem().toString();
 				}
@@ -1174,14 +1236,20 @@ public class SEM_Particle_Segmentation implements PlugIn {
 			public void itemStateChanged(ItemEvent e) {
 				logSetting("Apply Watershed", String.valueOf(chckbxNewCheckBox.isSelected()));
 				applyWatershed = chckbxNewCheckBox.isSelected();
-				if (inputImage == null) {
+				if (inputImage == null || inputImage.getWindow() == null) {
 					return;
 				}
 				sliderMinFeret.setValue(0);
-				sliderMinArea.setValue(0);
-				sliderMinSolidity.setValue(0);
-				sliderMinCircularity.setValue(0);
-				sliderMinMeanIntensity.setValue(0);
+				sliderArea.setValue(0);
+				sliderSolidity.setValue(0);
+				sliderCircularity.setValue(0);
+				sliderMeanIntensity.setValue(0);
+				sliderMinFeret.setUpperValue(100);
+				sliderArea.setUpperValue(100);
+				sliderSolidity.setUpperValue(100);
+				sliderCircularity.setUpperValue(100);
+				sliderMeanIntensity.setUpperValue(100);
+				
 				sliderAutoFilterThreshold.setValue(50);
 				minThreshold = (float)sliderThreshold.getValue()/100.0f;
 				minThresholdAutoFilter = (float)sliderAutoFilterThreshold.getValue()/100.0f;
@@ -1190,7 +1258,7 @@ public class SEM_Particle_Segmentation implements PlugIn {
 				segmented.show();
 				ij.WindowManager.toFront(ij.WindowManager.getWindow(inputImage.getTitle()));
 				doAnalysis();
-				applyFilterSettings("Min Feret", 0.0f);
+				applyFilterSettings("Circularity", 0.0f, 1.0f);
 			}
 		});
 
@@ -1198,19 +1266,25 @@ public class SEM_Particle_Segmentation implements PlugIn {
 			public void itemStateChanged(ItemEvent e) {
 				logSetting("Auto Filter Enabled", String.valueOf(chckbxAutoFilterCheckBox.isSelected()));
 				sliderMinFeret.setValue(0);
-				sliderMinArea.setValue(0);
-				sliderMinSolidity.setValue(0);
-				sliderMinCircularity.setValue(0);
-				sliderMinMeanIntensity.setValue(0);
+				sliderArea.setValue(0);
+				sliderSolidity.setValue(0);
+				sliderCircularity.setValue(0);
+				sliderMeanIntensity.setValue(0);
+				sliderMinFeret.setUpperValue(100);
+				sliderArea.setUpperValue(100);
+				sliderSolidity.setUpperValue(100);
+				sliderCircularity.setUpperValue(100);
+				sliderMeanIntensity.setUpperValue(100);
+
 				sliderAutoFilterThreshold.setValue(50);
 				sliderMinFeret.setEnabled(!chckbxAutoFilterCheckBox.isSelected());
-				sliderMinArea.setEnabled(!chckbxAutoFilterCheckBox.isSelected());
-				sliderMinSolidity.setEnabled(!chckbxAutoFilterCheckBox.isSelected());
-				sliderMinCircularity.setEnabled(!chckbxAutoFilterCheckBox.isSelected());
-				sliderMinMeanIntensity.setEnabled(!chckbxAutoFilterCheckBox.isSelected());
+				sliderArea.setEnabled(!chckbxAutoFilterCheckBox.isSelected());
+				sliderSolidity.setEnabled(!chckbxAutoFilterCheckBox.isSelected());
+				sliderCircularity.setEnabled(!chckbxAutoFilterCheckBox.isSelected());
+				sliderMeanIntensity.setEnabled(!chckbxAutoFilterCheckBox.isSelected());
 				sliderAutoFilterThreshold.setEnabled(chckbxAutoFilterCheckBox.isSelected());
 				//minThreshold = (float)sliderThreshold.getValue()/100.0f;
-				if (inputImage == null || predicted == null || predicted.getWindow() == null) {
+				if (inputImage == null || predicted == null  || inputImage.getWindow() == null || predicted.getWindow() == null) {
 					return;
 				}
 				if (chckbxAutoFilterCheckBox.isSelected()) {
@@ -1233,7 +1307,7 @@ public class SEM_Particle_Segmentation implements PlugIn {
 					})).start();				
 				} else {
 					doAnalysis();
-					applyFilterSettings("Min Feret", 0.0f);
+					applyFilterSettings("Circularity", 0.0f, 1.0f);
 				}
 			}
 		});
@@ -1242,21 +1316,26 @@ public class SEM_Particle_Segmentation implements PlugIn {
 			public void stateChanged(ChangeEvent e) {
 				JSlider source = (JSlider)e.getSource();
 				if (!source.getValueIsAdjusting()) {
-					if (inputImage == null) {
+					if (inputImage == null || inputImage.getWindow() == null) {
 						return;
 					}
 					minThreshold = (float)source.getValue()/100.0f;
 					sliderMinFeret.setValue(0);
-					sliderMinArea.setValue(0);
-					sliderMinSolidity.setValue(0);
-					sliderMinCircularity.setValue(0);
-					sliderMinMeanIntensity.setValue(0);
+					sliderArea.setValue(0);
+					sliderSolidity.setValue(0);
+					sliderCircularity.setValue(0);
+					sliderMeanIntensity.setValue(0);
+					sliderMinFeret.setUpperValue(100);
+					sliderArea.setUpperValue(100);
+					sliderSolidity.setUpperValue(100);
+					sliderCircularity.setUpperValue(100);
+					sliderMeanIntensity.setUpperValue(100);
 					segmented.close();
 					segmented = segment();
 					segmented.show();
 					ij.WindowManager.toFront(ij.WindowManager.getWindow(inputImage.getTitle()));
 					doAnalysis();
-					applyFilterSettings("Min Feret", 0.0f);
+					applyFilterSettings("Circularity", 0.0f, 1.0f);
 					logSetting("Threshold", String.valueOf(minThreshold));
 				}
 			}
@@ -1264,70 +1343,75 @@ public class SEM_Particle_Segmentation implements PlugIn {
 		
 		sliderMinFeret.addChangeListener(new ChangeListener() {
 			public void stateChanged(ChangeEvent e) {
-			  	JSlider source = (JSlider)e.getSource();
+			  	RangeSlider source = (RangeSlider)e.getSource();
 			  	if (!source.getValueIsAdjusting()) {
-					if (inputImage == null) {
+					if (inputImage == null || inputImage.getWindow() == null) {
 						return;
 					}
 			  		float minFeret = (float)source.getValue()/100.0f*minMaxAllFerets[1];
-  			  		applyFilterSettings("Min Feret", minFeret);
-					logSetting("Minimum Ferets Diameter", String.valueOf(minFeret));
+					float maxFeret = (float)source.getUpperValue()/100.0f*minMaxAllFerets[1];
+  			  		applyFilterSettings("Min Feret", minFeret, maxFeret);
+					logSetting("Ferets Diameter Range", String.valueOf(minFeret) + " - " + String.valueOf(maxFeret));
 			  	}
 			}
 		});
 
-		sliderMinArea.addChangeListener(new ChangeListener() {
+		sliderArea.addChangeListener(new ChangeListener() {
 			public void stateChanged(ChangeEvent e) {
-			  	JSlider source = (JSlider)e.getSource();
+			  	RangeSlider source = (RangeSlider)e.getSource();
 			  	if (!source.getValueIsAdjusting()) {
-					if (inputImage == null) {
+					if (inputImage == null || inputImage.getWindow() == null) {
 						return;
 					}
 			  		float minArea = (float)source.getValue()/100.0f*minMaxAllAreas[1];
-			  		applyFilterSettings("Min Area", minArea);
-					logSetting("Minimum Area", String.valueOf(minArea));
+					float maxArea = (float)source.getUpperValue()/100.0f*minMaxAllAreas[1];
+			  		applyFilterSettings("Area", minArea, maxArea);
+					logSetting("Area Range", String.valueOf(minArea) + " - " + String.valueOf(maxArea));
 			  	}
 			}
 		});
 
-		sliderMinSolidity.addChangeListener(new ChangeListener() {
+		sliderSolidity.addChangeListener(new ChangeListener() {
 			public void stateChanged(ChangeEvent e) {
-			  	JSlider source = (JSlider)e.getSource();
+			  	RangeSlider source = (RangeSlider)e.getSource();
 			  	if (!source.getValueIsAdjusting()) {
-					if (inputImage == null) {
+					if (inputImage == null || inputImage.getWindow() == null) {
 						return;
 					}
 			  		float minSolidity = (float)source.getValue()/100.0f*minMaxAllSolidities[1];
-			  		applyFilterSettings("Min Solidity", minSolidity);
-					logSetting("Minimum Solidity", String.valueOf(minSolidity));
+					float maxSolidity = (float)source.getUpperValue()/100.0f*minMaxAllSolidities[1];
+			  		applyFilterSettings("Solidity", minSolidity, maxSolidity);
+					logSetting("Solidity Range", String.valueOf(minSolidity) + " - " + String.valueOf(maxSolidity));
 			  	}
 			}
 		});
 
-		sliderMinCircularity.addChangeListener(new ChangeListener() {
+		sliderCircularity.addChangeListener(new ChangeListener() {
 			public void stateChanged(ChangeEvent e) {
-			  	JSlider source = (JSlider)e.getSource();
+			  	RangeSlider source = (RangeSlider)e.getSource();
 			  	if (!source.getValueIsAdjusting()) {
-					if (inputImage == null) {
+					if (inputImage == null || inputImage.getWindow() == null) {
 						return;
 					}
 			  		float minCircularity = (float)source.getValue()/100.0f*minMaxAllCircularities[1];
-			  		applyFilterSettings("Min Circularity", minCircularity);
-					logSetting("Minimum Circularity", String.valueOf(minCircularity));
+					float maxCircularity = (float)source.getUpperValue()/100.0f*minMaxAllCircularities[1];
+			  		applyFilterSettings("Circularity", minCircularity, maxCircularity);
+					logSetting("Circularity Range", String.valueOf(minCircularity) + " - " + String.valueOf(maxCircularity));
 			  	}
 			}
 		});
 
-		sliderMinMeanIntensity.addChangeListener(new ChangeListener() {
+		sliderMeanIntensity.addChangeListener(new ChangeListener() {
 			public void stateChanged(ChangeEvent e) {
-			  	JSlider source = (JSlider)e.getSource();
+			  	RangeSlider source = (RangeSlider)e.getSource();
 			  	if (!source.getValueIsAdjusting()) {
-					if (inputImage == null) {
+					if (inputImage == null || inputImage.getWindow() == null) {
 						return;
 					}
 			  		float minMeanIntensity = (float)source.getValue()/100.0f*minMaxAllMeans[1];
-			  		applyFilterSettings("Min MeanIntensity", minMeanIntensity);
-					logSetting("Minimum Mean Intensity", String.valueOf(minMeanIntensity));
+					float maxMeanIntensity = (float)source.getUpperValue()/100.0f*minMaxAllMeans[1];
+			  		applyFilterSettings("MeanIntensity", minMeanIntensity, maxMeanIntensity);
+					logSetting("Mean Intensity Range", String.valueOf(minMeanIntensity) + " - " + String.valueOf(maxMeanIntensity));
 			  	}
 			}
 		});
@@ -1336,7 +1420,7 @@ public class SEM_Particle_Segmentation implements PlugIn {
 			public void stateChanged(ChangeEvent e) {
 			  	JSlider source = (JSlider)e.getSource();
 			  	if (!source.getValueIsAdjusting()) {
-					if (inputImage == null || classified == null) {
+					if (inputImage == null || classified == null || inputImage.getWindow() == null) {
 						return;
 					}
 			  		minThresholdAutoFilter = (float)source.getValue()/100.0f;
@@ -1353,7 +1437,7 @@ public class SEM_Particle_Segmentation implements PlugIn {
 					}
 					roiMgr.runCommand(inputImage, "Measure");
 	
-					applyFilterSettings("Classes", minThresholdAutoFilter);			  	
+					applyFilterSettings("Classes", minThresholdAutoFilter, minThresholdAutoFilter);			  	
 					logSetting("Auto-Filter Threshold", String.valueOf(minThresholdAutoFilter));
 			  	}
 			}
