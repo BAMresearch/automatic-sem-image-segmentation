@@ -48,6 +48,7 @@ opencv-python==4.5.2.54
 matplotlib==3.5.2
 tqdm==4.62.3
 opensimplex==0.3
+
 Examples:
 ---------
 The following images illustrate a few examples of particles consisiting of different materials (Au, TiO2, BaSO4, SiO2, FeOx) and imaged with different techniques (SEM, eSEM, TEM), and their segmentation masks that were obtained automatically using the above algorithm (or slight variations thereof).
