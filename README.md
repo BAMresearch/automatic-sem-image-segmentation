@@ -32,17 +32,22 @@ How to use:
   
 Dependencies:
 -------------
-numpy  
-tensorflow  
-imageio  
-scikit_image  
-skimage  
-Pillow  
-scipy  
-opencv_python  
-tqdm  
-opensimplex  
-
+You can install all dependencies of the required version by running
+```
+pip install -r requirements.txt
+```
+or install the following packages manually (for some packages the exact version number might not be too important, but for others, changes were introduced in later versions that are not backwards compatible and will break the code):
+numpy==1.18.5
+tensorflow==2.2.0
+tensorflow_addons==0.11.2
+imageio==2.5.0
+scikit-image==0.15.0
+Pillow==8.2.0
+scipy==1.4.1
+opencv-python==4.5.2.54
+matplotlib==3.5.2
+tqdm==4.62.3
+opensimplex==0.3
 Examples:
 ---------
 The following images illustrate a few examples of particles consisiting of different materials (Au, TiO2, BaSO4, SiO2, FeOx) and imaged with different techniques (SEM, eSEM, TEM), and their segmentation masks that were obtained automatically using the above algorithm (or slight variations thereof).
