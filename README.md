@@ -37,6 +37,7 @@ You can install all dependencies of the required version by running
 pip install -r requirements.txt
 ```
 or install the following packages manually (for some packages the exact version number might not be too important, but for others, changes were introduced in later versions that are not backwards compatible and will break the code):
+```
 numpy==1.18.5
 tensorflow==2.2.0
 tensorflow_addons==0.11.2
@@ -48,6 +49,7 @@ opencv-python==4.5.2.54
 matplotlib==3.5.2
 tqdm==4.62.3
 opensimplex==0.3
+```
 
 Examples:
 ---------
