@@ -1,8 +1,9 @@
 import numpy as np
+import imageio
 import cv2
 
 from skimage.filters import threshold_otsu
-from skimage.morphology import watershed
+from skimage.segmentation import watershed
 from skimage.feature import peak_local_max
 from scipy import ndimage
 
@@ -61,6 +62,7 @@ class Measure(object):
         self.perimeters = None
         self.meanIntensities = None
         self.minAreaRects = None
+        self.minFeretRects = None
 
         self.pixelDistance = pixelDistance
         self.knownDistance = knownDistance
@@ -107,6 +109,49 @@ class Measure(object):
         :return: Euclidian distance between p and q
         """
         return ((q[0] - p[0]) ** 2 + (q[1] - p[1]) ** 2) ** 0.5
+        
+    @staticmethod
+    def __rotate_contour(cnt, angle):
+        """
+        Rotates an opencv 2D-contour by the specified angle (https://gist.github.com/nvs-abhilash/75a3920980fe32ffd4754bc205362125)
+        :param cnt: contour
+        :param angle: Rotation Angle (in degrees)
+        :return: Rotated contour, center of mass
+        """
+        def cart2pol(x, y):
+            theta = np.arctan2(y, x)
+            rho = np.hypot(x, y)
+            return theta, rho
+
+
+        def pol2cart(theta, rho):
+            x = rho * np.cos(theta)
+            y = rho * np.sin(theta)
+            return x, y
+            
+        M = cv2.moments(cnt)
+        cx = int(M['m10']/M['m00'])
+        cy = int(M['m01']/M['m00'])
+
+        cnt_norm = cnt - [cx, cy]
+        
+        coordinates = cnt_norm[:, 0, :]
+        xs, ys = coordinates[:, 0], coordinates[:, 1]
+        thetas, rhos = cart2pol(xs, ys)
+        
+        thetas = np.rad2deg(thetas)
+        thetas = (thetas + angle) % 360
+        thetas = np.deg2rad(thetas)
+        
+        xs, ys = pol2cart(thetas, rhos)
+        
+        cnt_norm[:, 0, 0] = xs
+        cnt_norm[:, 0, 1] = ys
+
+        cnt_rotated = cnt_norm + [cx, cy]
+        # cnt_rotated = cnt_rotated.astype(np.int32)
+
+        return cnt_rotated, (cx, cy)
 
     def __calculateContours(self):
         """
@@ -173,6 +218,8 @@ class Measure(object):
             del self.meanIntensities[shapeIndex]
         if not self.minAreaRects is None:
             del self.minAreaRects[shapeIndex]
+        if not self.minFeretRects is None:
+            del self.minFeretRects[shapeIndex]
         np.delete(self.contourHierarchy, shapeIndex)
 
     def __rotatingCalipers(self, shapeIndex):
@@ -313,6 +360,7 @@ class Measure(object):
         self._convexHullLower = []
         self.convexHulls = []
         for shape in self.contours:
+            #shape = cv2.convexHull(points=shape, clockwise=False, returnPoints=True)
             U = []
             L = []
             Points = sorted(shape.copy(), key=lambda point: point[0][0])
@@ -344,25 +392,25 @@ class Measure(object):
         self.minFeretDiameters = []
         self.minFeretPoints = []
         for i in range(0, self.number):
-            caliperPoints = [(self.__dist(p, q), (p, q)) for p, q in self.__rotatingCalipers(i)]
-
             # caliperPoints contains all ways of sandwiching two points on the convex hull between two parallel lines
             # that touch one point each. For minFeret, one of the parallel lines always goes through two vertices.
             # For determining minFeret, loop through all caliper points (antipodal pairs), construct the corresponding
             # triangles, and measure their heights
-
+            
+            caliperPoints = [(self.__dist(p, q), (p, q)) for p, q in self.__rotatingCalipers(i)]
             mF = []
             for j in range(0, len(caliperPoints)):
                 for k in range(j + 1, len(caliperPoints)):
                     pair1 = np.asarray(caliperPoints[j][1])
                     pair2 = np.asarray(caliperPoints[k][1])
-                    # True and False ar just a lazy way to refer to indices 0 and 1 here.
+                    # True and False are just a lazy way to refer to indices 0 and 1 here.
                     for m in [False, True]:
                         for n in [False, True]:
                             # Check that 2 points from different pairs are identical
                             if np.all(pair1[int(m)] == pair2[int(n)]):
                                 # If so, make sure that the other 2 points are adjacent points of the convex hull
                                 for l in range(0, self.convexHulls[i][0].shape[0]):
+                                    #if (pair1[int(not m)] in self.convexHulls[i][0][l % self.convexHulls[i][0].shape[0]][0] and pair2[int(not n)] in self.convexHulls[i][0][(l+1) % self.convexHulls[i][0].shape[0]][0]) or (pair2[int(not n)] in self.convexHulls[i][0][l % self.convexHulls[i][0].shape[0]][0] and pair1[int(not m)] in self.convexHulls[i][0][(l+1) % self.convexHulls[i][0].shape[0]][0]):
                                     if (np.all(pair1[int(not m)] == self.convexHulls[i][0][l % self.convexHulls[i][0].shape[0]][0]) and np.all(pair2[int(not n)] == self.convexHulls[i][0][(l + 1) % self.convexHulls[i][0].shape[0]][0])) or (np.all(pair2[int(not n)] == self.convexHulls[i][0][l % self.convexHulls[i][0].shape[0]][0]) and np.all(pair1[int(not m)] == self.convexHulls[i][0][(l + 1) % self.convexHulls[i][0].shape[0]][0])):
                                         a = caliperPoints[j][0]
                                         b = caliperPoints[k][0]
@@ -374,8 +422,8 @@ class Measure(object):
                                         else:
                                             o = (a ** 2 - h ** 2) ** 0.5
 
-                                        p0 = np.asarray(pair1[int(not m)] + o * (pair2[int(not n)] - pair1[int(not m)]) /
-                                                        self.__dist(pair2[int(not n)], pair1[int(not m)]), dtype='uint16')
+                                        p0 = np.asarray(pair1[int(not m)] + np.dot(np.asarray(pair1[int(m)] - pair1[int(not m)]), np.asarray(pair2[int(not n)] - pair1[int(not m)])) / c ** 2 * np.asarray(pair2[int(not n)] - pair1[int(not m)]), dtype='float32')
+                                        # p0 = np.asarray(pair1[int(not m)] + o * (pair2[int(not n)] - pair1[int(not m)]) / self.__dist(pair2[int(not n)], pair1[int(not m)]), dtype='uint16')
                                         p1 = pair1[int(m)]
                                         p = np.asarray([p0, p1])
                                         mF.append([h, p.tolist()])
@@ -483,6 +531,29 @@ class Measure(object):
             self.minAreaRects[i] = (self.minAreaRects[i][0], (self.minAreaRects[i][1][0] * self.knownDistance / self.pixelDistance, self.minAreaRects[i][1][1] * self.knownDistance / self.pixelDistance), self.minAreaRects[i][2])
         return self.minAreaRects
 
+    def calculateMinFeretRects(self):
+        """
+        Calculates the rectengular bounding box given by the Minimum Feret Diameter and a line perpendicular to it for all shapes in the class variable contours (taking calibration
+        into account for sizes but NOT for pixel coordinates), adds them to a list stored in the class variable
+        minFeretRects, and also returns the list.
+        :return: List of bounding boxes of the particles (center of mass, shape, angle)
+        """
+        self.minFeretRects = []
+        if self.minFeretDiameters is None:
+            self.calculateMinFeretDiameters()
+
+        for i, c in enumerate(self.convexHulls):
+            c = np.asarray(c[0])
+            angle = np.rad2deg(np.arccos((self.minFeretPoints[i][1][0] - self.minFeretPoints[i][0][0]) / self.__dist(self.minFeretPoints[i][0], self.minFeretPoints[i][1]))) # Angle of Min Feret and x-axis in Degrees
+            if self.minFeretPoints[i][1][1] < self.minFeretPoints[i][0][1]:
+                angle = -angle
+            c_rotated, c_center = self.__rotate_contour(c, -angle)
+            width = (np.max(c_rotated[:, :, 0]) - np.min(c_rotated[:, :, 0])) * self.knownDistance / self.pixelDistance
+            height = (np.max(c_rotated[:, :, 1]) - np.min(c_rotated[:, :, 1])) * self.knownDistance / self.pixelDistance
+            self.minFeretRects.append((c_center, (width, height), angle))
+        
+        return self.minFeretRects
+
     def filterResults(self, filterType, minValue=0.0, maxValue=-1.0):
         """
         Filter the results based on area, completeness score, convexness score, mean intensity,
@@ -492,7 +563,7 @@ class Measure(object):
         :param maxValue: Maximum value of that quantity that should still be included
         """
         assert filterType in {'area', 'completenessScore', 'convexnessScore', 'meanIntensity', 'maxFeretDiameter',
-                              'minFeretDiameter', 'perimeter'}
+                              'minFeretDiameter', 'perimeter', 'minAreaRects', 'minFeretRects'}
 
         if minValue == 0 and maxValue < minValue:
             return
@@ -551,6 +622,13 @@ class Measure(object):
                 self.calculateMinAreaRects()
             for i in range(self.number-1, -1, -1):
                 if max(self.minAreaRects[i][1][0], self.minAreaRects[i][1][1]) < minValue or (min(self.minAreaRects[i][1][0], self.minAreaRects[i][1][1]) > maxValue and maxValue >= minValue):
+                    self.__removeShapeMeasurements(i)
+
+        elif filterType == 'minFeretRects':
+            if self.minAreaRects is None:
+                self.calculateMinFeretRects()
+            for i in range(self.number-1, -1, -1):
+                if max(self.minFeretRects[i][1][0], self.minFeretRects[i][1][1]) < minValue or (min(self.minFeretRects[i][1][0], self.minFeretRects[i][1][1]) > maxValue and maxValue >= minValue):
                     self.__removeShapeMeasurements(i)
 
         self.number = len(self.contours)
