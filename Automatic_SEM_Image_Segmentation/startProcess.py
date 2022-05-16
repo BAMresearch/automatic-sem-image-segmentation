@@ -332,12 +332,12 @@ if __name__ == '__main__':
     # cycleGAN.runTraining()
     # Workaround for tensorflow not freeing GPU memory on RTX cards after process completion: start in own interpreter
 
-    os.system('python CycleGAN.py {} --image_shape=({},{},1) --mode=training'.format(ROOT_DIR, TILE_SIZE_H, TILE_SIZE_W))
+    os.system('python CycleGAN.py {} --image_shape="({},{},1)" --mode=training'.format(ROOT_DIR, TILE_SIZE_H, TILE_SIZE_W))
 
     # Step 4: Simulate fake SEM Images and segment real SEM images with cycleGAN
     # cycleGAN.runInference()
     # Workaround for tensorflow not freeing GPU memory on RTX cards after process completion: start in own interpreter
-    os.system('python CycleGAN.py {} --image_shape=({},{},1) --mode=inference'.format(ROOT_DIR, TILE_SIZE_H, TILE_SIZE_W))
+    os.system('python CycleGAN.py {} --image_shape="({},{},1)" --mode=inference'.format(ROOT_DIR, TILE_SIZE_H, TILE_SIZE_W))
 
     # Stitch image tiles back together
     for f in os.listdir(INPUT_DIR_IMAGES):
@@ -381,11 +381,11 @@ if __name__ == '__main__':
         imgTiles = np.asarray(tileImage(inputImg, IMAGE_SIZE_W, IMAGE_SIZE_H, TILE_SIZE_W, TILE_SIZE_H, normalizeOutput=True), dtype='float32')
         for i, imgTile in enumerate(imgTiles):
             # Save all tiles for later inference
-            imageio.imwrite(os.path.join(ROOT_DIR, '3_Unet', 'Input', f.replace('.tif', '-' + str(i) + '.tif')), imgTile[:, :, 0])
+            imageio.imwrite(os.path.join(ROOT_DIR, '3_UNet', 'Input', f.replace('.tif', '-' + str(i) + '.tif')), imgTile[:, :, 0])
 
-    imgPath = os.path.join(ROOT_DIR, '3_Unet', 'Input')
-    mskPath = os.path.join(ROOT_DIR, '3_Unet', 'Output')
-    modelPath = os.path.join(ROOT_DIR, '3_Unet', 'Models', 'Model.h5')
+    imgPath = os.path.join(ROOT_DIR, '3_UNet', 'Input')
+    mskPath = os.path.join(ROOT_DIR, '3_UNet', 'Output')
+    modelPath = os.path.join(ROOT_DIR, '3_UNet', 'Models', 'Model.h5')
     os.system('python UNet_Segmentation.py {} {} {} SEM --image_width={} --image_height={} --mode=inference --model_path={}'.format(ROOT_DIR, imgPath, mskPath, TILE_SIZE_W, TILE_SIZE_H, modelPath))
 
     # Stitch image tiles back together
