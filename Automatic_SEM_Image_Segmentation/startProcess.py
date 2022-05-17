@@ -325,7 +325,7 @@ if __name__ == '__main__':
 
     # Step 1&2: Train WGAN and simulate Masks
     # Workaround for tensorflow not freeing GPU memory on RTX cards after process completion: start in own interpreter
-    os.system('python WassersteinGAN.py {} --instance_image_shape=(64,64,1) --image_shape=({},{},1) --image_number=1000'.format(ROOT_DIR, TILE_SIZE_H, TILE_SIZE_W))
+    os.system('python WassersteinGAN.py {} --instance_image_shape="(64,64,1)" --image_shape="({},{},1)" --image_number=1000'.format(ROOT_DIR, TILE_SIZE_H, TILE_SIZE_W))
     # Step 3: Train cycleGAN
     prepareImagesCycleGAN()
     # cycleGAN = CycleGAN.CycleGAN(image_shape=(352, 512, 1), ROOT_DIR=ROOT_DIR)
