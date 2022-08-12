@@ -1,4 +1,5 @@
-from keras.layers import Conv2D, MaxPooling2D, Conv2DTranspose, concatenate, BatchNormalization, Activation, add
+from tensorflow.keras.layers import Conv2D, MaxPooling2D, Conv2DTranspose, concatenate, BatchNormalization, Activation, add
+
 
 class MultiResUNet:
 
@@ -194,9 +195,13 @@ class MultiResUNet:
 
         if outputChannels == 1:
             conv10 = MultiResUNet.conv2d_bn(mresblock9, 1, 1, 1, activation='sigmoid', name='output')
+            # conv10 = MultiResUNet.conv2d_bn(mresblock9, 1, 1, 1, activation=None)
         else:
             conv10 = Conv2D(outputChannels, (1, 1), strides=1, activation=None)(mresblock9)
             conv10 = Activation('softmax', name='output')(conv10)
+
+        # model = Model(inputs=[inputs], outputs=[conv10])
+        # return model
 
         return conv10
 
