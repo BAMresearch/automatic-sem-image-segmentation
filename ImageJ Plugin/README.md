@@ -33,7 +33,7 @@ Converting tensorflow 2.x/keras models to tensorflow 1.12.0 protobuf files
 --------------------------------------------------------------------------
 In the past, we used a slightly modified version of the python script by Amir H. Abdi published under the MIT license on [GitHub](https://github.com/amir-abdi/keras_to_tensorflow) for this purpose. The process has now been simplified and streamlined towards UNet models trained with the workflow. A script for saving the model weights as well as parts of its configuration from a pretrained UNet model, as well as a second script for re-building the same model in tensorflow 1.12.0, loading the previously saved weights, and saving the model as a tensorflow 1.12.0 pb file were added to the `Convert_Models_to_TF112` directory.
 
-General procesure:
+General procedure:
   1. Load the trained model from the **same** python environment/venv that you used for training the model, and save the model weights using the `model.save_weights()` function. You can do this by simply running the `save_model_weights.py` script with the model path as a command-line-argument. For models saved in the old h5 format, use:
 	 ```
      python save_model_weights.py -model_input_path=".\Model.h5"
