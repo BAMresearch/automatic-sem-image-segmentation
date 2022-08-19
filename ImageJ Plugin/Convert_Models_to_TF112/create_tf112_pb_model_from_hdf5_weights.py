@@ -25,7 +25,7 @@ def convert_model(weights_path, input_shape=(384, 384, 1), output_channels=1, fi
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Convert build a MultiRes UNet model, load weights from file, and save as .pb for tensorflow 1.15')
+    parser = argparse.ArgumentParser(description='Convert build a MultiRes UNet model, load weights from file, and save as .pb for tensorflow 1.12')
     parser.add_argument('-weights_path', type=str, help='Path to the model weights file.')
     parser.add_argument('--input_shape', type=str, default="(384,384,1)", help='Input shape for the exported model (since it is an FCN, it can be different from the input shape of the original model).')
     parser.add_argument('--output_channels', type=int, default=1, help='Number of output channels of the original model from which the weights were saved.')

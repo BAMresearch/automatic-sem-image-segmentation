@@ -2,26 +2,15 @@ import os
 import argparse
 import tensorflow as tf
 
-weighting = 1
+
+unweighted_bce = tf.keras.losses.BinaryCrossentropy(from_logits=False, reduction=tf.keras.losses.Reduction.NONE)
+weighting = 1  # Not used for inference, just set to 1
 
 
 def weighted_bce(y_true, y_pred):
     weights = (y_true * (weighting - 1)) + 1
-    bce = K.binary_crossentropy(y_true, y_pred)
-    weighted_loss = K.mean(bce * weights)
-    return weighted_loss
-
-
-weights = [1 for i in range(0, 3)]
-
-
-def weighted_cce(y_true, y_pred):
-    weighted_cce = 0.0
-    for i in range(0, 3):
-        weighted = (y_true[:, :, :, i] * (weights[i] - 1)) + 1
-        bce = K.binary_crossentropy(y_true[:, :, :, i], y_pred[:, :, :, i])
-        weighted_cce += K.mean(bce * weighted)
-    return weighted_cce
+    bce = tf.expand_dims(unweighted_bce(y_true, y_pred), -1)
+    return tf.reduce_mean(bce * weights)
 
 
 def save_model_weights(model_path):
