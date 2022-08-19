@@ -1,0 +1,10 @@
+numpy==1.23.1
+tensorflow==2.9.1
+tensorflow_addons==0.17.1
+scikit-image==0.19.3
+Pillow==9.2.0
+scipy==1.9.0
+opencv-python==4.6.0.66
+matplotlib==3.5.2
+tqdm==4.64.0
+opensimplex==0.4.3
