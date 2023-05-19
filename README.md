@@ -38,6 +38,15 @@ How to use:
   
 Releases:
 -----------------
+  * **1.1.1**
+	Various small updates and bugfixes, and some new features (mainly for working with TEM images). For requirements, see requirements.txt in the subfolder. Tested on Windows 10, python 3.10.6, CUDA 11.2, cuDNN 8.1.0.
+	- Features were added for simulating fake masks that can help arranging particles in a way they are often found in TEM images.
+	- Option for using a dark particles on a bright background was added (as often found in brightfield TEM images).
+	- Some default parameters were changed.
+	- Several bugfixes:
+		* Spawning processes as a workaround for tensorflow not freeing GPU memory now works as intended
+		* Fixed a bug with loading models by specifying a path
+		* Fixed a bug with the learning rate scheduler for rate decay
   * **1.1.0**
     First major new release with various changes. For requirements, see requirements.txt in the subfolder. Tested on Windows 10, python 3.10.6, CUDA 11.2, cuDNN 8.1.0.
     - The code has been completely refactored and streamlined towards the most used applications.
