@@ -54,6 +54,7 @@ Releases:
       |------------|----------|---------|---------|----------|
       | tensorflow | 0.4316   | 0.9858  | 0.2532  | 4:18 h   |
       | pytorch    | 0.3996   | 0.9968  | 0.2190  | 6:35 h   |
+      
       NB: For unknown reasons, the run time was ~50% faster with the tensorflow backend, however, the peak memory consumption was also ~50% higher, meaning you might have to use smaller batch sizes, making the execution time longer again. 
   * **1.1.1**
 	Various small updates and bugfixes, and some new features (mainly for working with TEM images). For requirements, see requirements.txt in the subfolder. Tested on Windows 10, python 3.10.6, CUDA 11.2, cuDNN 8.1.0.
