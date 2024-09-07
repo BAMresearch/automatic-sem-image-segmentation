@@ -33,15 +33,32 @@ How to use:
 	 pip install -r requirements.txt
 	 ```
 	 The requirements are different for the different releases of the workflow. Please also make sure that your python version, as well as the CUDA and cuDNN versions are compatible with the packages from requirements.txt (especially the tensorflow version)
-  5. Open the StartProcess.py file and choose the options and parameters you want for training (or skip this step and use the standard options). You probably want to at least set the tile size, and the cycleGAN and UNet batch sizes, though. The tile size should be large enough to fit roughly 100-150 particles (if there are significantly more or less, you might also have to adjust the minimum and maximum number of particles in the simulated masks), and the batch sizes can then usually just be increased until you run out of GPU memory).
+  5. Open the `StartProcess.py` file and choose the options and parameters you want for training (or skip this step and use the standard options). You probably want to at least set the tile size, and the cycleGAN and UNet batch sizes, though. The tile size should be large enough to fit roughly 100-150 particles (if there are significantly more or less, you might also have to adjust the minimum and maximum number of particles in the simulated masks), and the batch sizes can then usually just be increased until you run out of GPU memory).
   6. Start the process by running `python StartProcess.py`
   
 Releases:
 -----------------
+  * **1.2.0**
+	All code, models and training loops were ported to Keras v3, so the entire workflow can now be run with tensorflow or pytorch as a backend with minimal changes. To use pytorch instead of tensorflow, just change the second and third lines in `StartProcess.py` to:
+	```python
+	# os.environ["KERAS_BACKEND"] = "tensorflow"
+	os.environ["KERAS_BACKEND"] = "torch"
+    ```
+ 	For requirements, see requirements.txt in the subfolder. Tested on Debian GNU/Linux 11 (bullseye), python 3.10.13, CUDA 12.3, cuDNN 8.9.0, NVIDIA Driver v550.54.14
+	- The release also includes some small updates and bugfixes, and some refactoring/consistency changes of the custom training loops for tensorflow and pytorch.
+	- CycleGAN uses an image buffer now, as suggested in the original paper and implementation (can be disabled by setting the pool site to 0).
+	- Some default parameters have changed.
+    - The performance on the training and test datasets in this repo when run with standard parameters seems to be similar across backends (only one run, (mostly) unseeded random number generators, only default metrics):
+      
+      | backend    | val_loss | val_acc | val_mae | run time |
+      |------------|----------|---------|---------|----------|
+      | tensorflow | 0.4316   | 0.9858  | 0.2532  | 4:18 h   |
+      | pytorch    | 0.3996   | 0.9968  | 0.2190  | 6:35 h   |
+      NB: For unknown reasons, the run time was ~50% faster with the tensorflow backend, however, the peak memory consumption was also ~50% higher, meaning you might have to use smaller batch sizes, making the execution time longer again. 
   * **1.1.1**
 	Various small updates and bugfixes, and some new features (mainly for working with TEM images). For requirements, see requirements.txt in the subfolder. Tested on Windows 10, python 3.10.6, CUDA 11.2, cuDNN 8.1.0.
 	- Features were added for simulating fake masks that can help arranging particles in a way they are often found in TEM images.
-	- Option for using a dark particles on a bright background was added (as often found in brightfield TEM images).
+	- Option for using dark particles on a bright background was added (as often found in brightfield TEM images).
 	- Some default parameters were changed.
 	- Several bugfixes:
 		* Spawning processes as a workaround for tensorflow not freeing GPU memory now works as intended
@@ -60,7 +77,7 @@ Releases:
 		* possibility to add Gaussian noise to discriminator layers in cycleGAN to avoid "overtraining" the discriminator and mode collapse in the generator (which is the default setting now), possibility to add a skip connection between input and output layer in the generators (as done in UNets - here it is conceptually similar to using identity mappings), as well as using an "asymmetric" network with binary crossentropy for the generator producing fake masks and mean absolute error for the generator producing fake microscopy images.
 		* new options and improved performance for simulating fake masks after WGAN training.
 		* making it easier to work with arbitrarily sized images and masks (will be padded automatically to meet shape requirements imposed by the neural network architecture).
-		* being more flexible with the image inputs: the code will try to read different image files (not only tif as is in version 1.0.x), will automatically infere the image shape and reshape/convert if necessary (e.g., the masks no longer have to be 8 bit single channel black and white images with black pixels having a value of 0 and white pixels having a value of 255 - they still have to be black and white, but could also be stored in rgb format or have black pixels as 0 and white pixels as 1, etc.).
+		* being more flexible with the image inputs: the code will try to read different image files (not only tif as is in version 1.0.x), will automatically infer the image shape and reshape/convert if necessary (e.g., the masks no longer have to be 8 bit single channel black and white images with black pixels having a value of 0 and white pixels having a value of 255 - they still have to be black and white, but could also be stored in rgb format or have black pixels as 0 and white pixels as 1, etc.).
 		* the readability of the code is improved: the main options are given at the beginning, more advanced options can be found deeper within the code, and the naming and structure of the variables and directories used in the different steps is more consistent now.
 		* several other small changes
   * **1.0.1**
@@ -86,8 +103,8 @@ Parts of the code used in this project are based on code published under the fol
      * The WGAN implementation used in these versions are based on the work by A. K. Nain published on the [Keras website](https://keras.io/examples/generative/wgan_gp/) under the [Apache License v2.0](https://www.apache.org/licenses/LICENSE-2.0.txt).  
      * The cycleGAN implementation used in these versions are based on the work by S. T. Karlson published on [GitHub](https://github.com/simontomaskarlsson/CycleGAN-Keras) under the [GNU General Public License v3.0](https://www.gnu.org/licenses/gpl-3.0-standalone.html).  
      * The MultiRes UNet implementation used in these versions are based on the work by N. Ibtehaz published on [GitHub](https://github.com/nibtehaz/MultiResUNet) under the [MIT license](https://opensource.org/licenses/MIT).  
-  2. Versions 1.1.x
+  2. Versions 1.1.x and 1.2.x
      * The Python implementation of the workflow is published under the [MIT license](https://opensource.org/licenses/MIT).
      * The WGAN implementation used in these versions are based on the work by A. K. Nain published on the [Keras website](https://keras.io/examples/generative/wgan_gp/) under the [Apache License v2.0](https://www.apache.org/licenses/LICENSE-2.0.txt).  
-     * The cycleGAN implementation used in these versions are based on the work by A. K. Nain published on [Keras website](https://keras.io/examples/generative/cyclegan/) under the [Apache License v2.0](https://www.apache.org/licenses/LICENSE-2.0.txt).  
-     * The MultiRes UNet implementation used in these versions are based on the work by N. Ibtehaz published on [GitHub](https://github.com/nibtehaz/MultiResUNet) under the [MIT license](https://opensource.org/licenses/MIT).  
+     * The cycleGAN implementation used in these versions are based on the work by A. K. Nain published on [Keras website](https://keras.io/examples/generative/cyclegan/) under the [Apache License v2.0](https://www.apache.org/licenses/LICENSE-2.0.txt) and  J. Y. Zhu et al. published on [GitHub](https://github.com/junyanz/pytorch-CycleGAN-and-pix2pix) under the [BSD license](https://opensource.org/license/bsd-2-clause).  
+     * The MultiRes UNet implementation used in these versions are based on the work by N. Ibtehaz published on [GitHub](https://github.com/nibtehaz/MultiResUNet) under the [MIT license](https://opensource.org/licenses/MIT).
