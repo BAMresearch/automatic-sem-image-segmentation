@@ -46,16 +46,17 @@ Releases:
     ```
  	For requirements, see requirements.txt in the subfolder. Tested on Debian GNU/Linux 11 (bullseye), python 3.10.13, CUDA 12.3, cuDNN 8.9.0, NVIDIA Driver v550.54.14
 	- The release also includes some small updates and bugfixes, and some refactoring/consistency changes of the custom training loops for tensorflow and pytorch.
-	- CycleGAN uses an image buffer now, as suggested in the original paper and implementation (can be disabled by setting the pool site to 0).
+	- CycleGAN uses an image buffer now, as suggested in the original paper and implementation (can be disabled by setting the pool size to 0).
 	- Some default parameters have changed.
-    - The performance on the training and test datasets in this repo when run with standard parameters seems to be similar across backends (only one run, (mostly) unseeded random number generators, only default metrics):
+    - The performance on the training and test datasets in this repository when run with standard parameters seems to be similar across backends (only one run, (mostly) unseeded random number generators):
       
-      | backend    | val_loss | val_acc | val_mae | run time |
-      |------------|----------|---------|---------|----------|
-      | tensorflow | 0.4316   | 0.9858  | 0.2532  | 4:18 h   |
-      | pytorch    | 0.3996   | 0.9968  | 0.2190  | 6:35 h   |
+      | backend        | Avg IoU (Img) | Avg IoU (Inst) | Avg Youdens Index | val loss | val acc | val mae | run time |
+      |----------------|---------------|----------------|-------------------|----------|---------|---------|----------|
+      | tensorflow     | 0.8762        | 0.5750         | 0.9120            | 0.4316   | 0.9858  | 0.2532  | 4:18 h   |
+      | pytorch        | 0.8502        | 0.5162         | 0.9008            | 0.3996   | 0.9968  | 0.2190  | 6:35 h   |
+      | publ. (v1.0.0) | 0.8108        | 0.6544         | 0.8546            | -        | -       | -       | -        | 
       
-      NB: For unknown reasons, the run time was ~50% faster with the tensorflow backend, however, the peak memory consumption was also ~50% higher, meaning you might have to use smaller batch sizes, making the execution time longer again. 
+      NB: For unknown reasons, the run time was ~50% faster with the tensorflow backend, however, the peak memory consumption was also ~50% higher, meaning you might have to use smaller batch sizes, which will in turn also make the execution time longer again. 
   * **1.1.1**
 	Various small updates and bugfixes, and some new features (mainly for working with TEM images). For requirements, see requirements.txt in the subfolder. Tested on Windows 10, python 3.10.6, CUDA 11.2, cuDNN 8.1.0.
 	- Features were added for simulating fake masks that can help arranging particles in a way they are often found in TEM images.
