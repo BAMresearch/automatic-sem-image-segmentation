@@ -243,7 +243,7 @@ def prepare_images_cycle_gan(root_dir, input_dir_images, tile_size_w=384, tile_s
     input_imgs = load_and_preprocess_images(input_dir_or_filelist=input_dir_images, normalization_range=None, output_channels=1)
     filenames = get_image_file_paths_from_directory(input_dir_images)
     for i, input_img in enumerate(input_imgs):
-        img_tiles = np.asarray(tile_image(input_img, tile_size_w, tile_size_h, normalization_range=None, min_overlap=0), dtype='uint8')
+        img_tiles = np.asarray(tile_image(input_img, tile_size_w, tile_size_h, normalization_range=(0, 255), min_overlap=0), dtype='uint8')
         f = os.path.split(filenames[i])[-1]
         for j, img_tile in enumerate(img_tiles):
             # Filter out tiles that show mainly background for training
