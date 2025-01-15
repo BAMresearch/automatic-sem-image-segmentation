@@ -33,7 +33,7 @@ How to use:
 	 pip install -r requirements.txt
 	 ```
 	 The requirements are different for the different releases of the workflow. Please also make sure that your python version, as well as the CUDA and cuDNN versions are compatible with the packages from requirements.txt (especially the tensorflow version)
-  5. Open the `StartProcess.py` file and choose the options and parameters you want for training (or skip this step and use the standard options). You probably want to at least set the tile size, and the cycleGAN and UNet batch sizes, though. The tile size should be large enough to fit roughly 100-150 particles (if there are significantly more or less, you might also have to adjust the minimum and maximum number of particles in the simulated masks), and the batch sizes can then usually just be increased until you run out of GPU memory).
+  5. Open the `StartProcess.py` file and choose the options and parameters you want for training (or skip this step and use the standard options). You probably want to at least set the tile size, and the cycleGAN and UNet batch sizes, though. The tile size should be large enough to fit roughly 100-150 particles (if there are significantly more or less, you might also have to adjust the minimum and maximum number of particles in the simulated masks), and the batch sizes can then usually just be increased until you run out of GPU memory.
   6. Start the process by running `python StartProcess.py`
   
 Releases:
@@ -102,11 +102,11 @@ The files of this project are provided under different licenses, please refer al
 Parts of the code used in this project are based on code published under the following licenses:
   1. Versions 1.0.x
      * The Python implementation of the workflow is published under the [GNU General Public License v3.0](https://www.gnu.org/licenses/gpl-3.0-standalone.html)
-     * The WGAN implementation used in these versions are based on the work by A. K. Nain published on the [Keras website](https://keras.io/examples/generative/wgan_gp/) under the [Apache License v2.0](https://www.apache.org/licenses/LICENSE-2.0.txt).  
-     * The cycleGAN implementation used in these versions are based on the work by S. T. Karlson published on [GitHub](https://github.com/simontomaskarlsson/CycleGAN-Keras) under the [GNU General Public License v3.0](https://www.gnu.org/licenses/gpl-3.0-standalone.html).  
-     * The MultiRes UNet implementation used in these versions are based on the work by N. Ibtehaz published on [GitHub](https://github.com/nibtehaz/MultiResUNet) under the [MIT license](https://opensource.org/licenses/MIT).  
+     * The WGAN implementation used in these versions is based on the work by A. K. Nain published on the [Keras website](https://keras.io/examples/generative/wgan_gp/) under the [Apache License v2.0](https://www.apache.org/licenses/LICENSE-2.0.txt).  
+     * The cycleGAN implementation used in these versions is based on the work by S. T. Karlson published on [GitHub](https://github.com/simontomaskarlsson/CycleGAN-Keras) under the [GNU General Public License v3.0](https://www.gnu.org/licenses/gpl-3.0-standalone.html).  
+     * The MultiRes UNet implementation used in these versions is based on the work by N. Ibtehaz published on [GitHub](https://github.com/nibtehaz/MultiResUNet) under the [MIT license](https://opensource.org/licenses/MIT).  
   2. Versions 1.1.x and 1.2.x
      * The Python implementation of the workflow is published under the [MIT license](https://opensource.org/licenses/MIT).
-     * The WGAN implementation used in these versions are based on the work by A. K. Nain published on the [Keras website](https://keras.io/examples/generative/wgan_gp/) under the [Apache License v2.0](https://www.apache.org/licenses/LICENSE-2.0.txt).  
-     * The cycleGAN implementation used in these versions are based on the work by A. K. Nain published on [Keras website](https://keras.io/examples/generative/cyclegan/) under the [Apache License v2.0](https://www.apache.org/licenses/LICENSE-2.0.txt) and  J. Y. Zhu et al. published on [GitHub](https://github.com/junyanz/pytorch-CycleGAN-and-pix2pix) under the [BSD license](https://opensource.org/license/bsd-2-clause).  
-     * The MultiRes UNet implementation used in these versions are based on the work by N. Ibtehaz published on [GitHub](https://github.com/nibtehaz/MultiResUNet) under the [MIT license](https://opensource.org/licenses/MIT).
+     * The WGAN implementation used in these versions is based on the work by A. K. Nain published on the [Keras website](https://keras.io/examples/generative/wgan_gp/) under the [Apache License v2.0](https://www.apache.org/licenses/LICENSE-2.0.txt).  
+     * The cycleGAN implementation used in these versions is based on the work by A. K. Nain published on [Keras website](https://keras.io/examples/generative/cyclegan/) under the [Apache License v2.0](https://www.apache.org/licenses/LICENSE-2.0.txt) and J. Y. Zhu et al. published on [GitHub](https://github.com/junyanz/pytorch-CycleGAN-and-pix2pix) under the [BSD license](https://opensource.org/license/bsd-2-clause).  
+     * The MultiRes UNet implementation used in these versions is based on the work by N. Ibtehaz published on [GitHub](https://github.com/nibtehaz/MultiResUNet) under the [MIT license](https://opensource.org/licenses/MIT).
