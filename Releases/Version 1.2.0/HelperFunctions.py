@@ -240,7 +240,7 @@ def initialize_directories(root_dir, output_dir_cyclegan, output_dir_unet):
 
 def prepare_images_cycle_gan(root_dir, input_dir_images, tile_size_w=384, tile_size_h=384, num_simulated_masks=1000, dark_background=True):
     # Tile SEM Images to correct Size
-    input_imgs = load_and_preprocess_images(input_dir_or_filelist=input_dir_images, normalization_range=None, output_channels=1)
+    input_imgs = load_and_preprocess_images(input_dir_or_filelist=input_dir_images, normalization_range=None, output_channels=1, return_as_numpy=False)
     filenames = get_image_file_paths_from_directory(input_dir_images)
     for i, input_img in enumerate(input_imgs):
         img_tiles = np.asarray(tile_image(input_img, tile_size_w, tile_size_h, normalization_range=(0, 255), min_overlap=0), dtype='uint8')
@@ -268,13 +268,14 @@ def prepare_images_cycle_gan(root_dir, input_dir_images, tile_size_w=384, tile_s
         print('Performing data augmentation...')
         with tqdm(total=num_simulated_masks - num_images_a) as pbar:
             while i < num_simulated_masks - num_images_a:
-                r = random.randint(0, input_imgs.shape[0] - 1)
+                r = random.randint(0, len(input_imgs) - 1)
                 f = os.path.split(filenames[r])[-1]
                 ext = os.path.splitext(f)[-1]
-                input_img = input_imgs[r, :, :, :]
-                a = random.randint(0, input_img.shape[0] - tile_size_h - 1)
-                b = random.randint(0, input_img.shape[1] - tile_size_w - 1)
-                img_tile = input_img[a:a + tile_size_h, b:b + tile_size_w]
+                input_img = input_imgs[r][:, :, :]
+                if input_img.shape[0] > tile_size_h + 1 and input_img.shape[1] > tile_size_w + 1:
+                    a = random.randint(0, input_img.shape[0] - tile_size_h - 1)
+                    b = random.randint(0, input_img.shape[1] - tile_size_w - 1)
+                    img_tile = input_img[a:a + tile_size_h, b:b + tile_size_w]
                 if random.random() > 0.5:
                     img_tile = np.fliplr(img_tile)
                 if random.random() > 0.5:
@@ -291,7 +292,7 @@ def get_image_file_paths_from_directory(directory):
     return [os.path.join(directory, file) for file in os.listdir(directory) if file.endswith('.tif') or file.endswith('.tiff') or file.endswith('.png') or file.endswith('.bmp') or file.endswith('.jpg') or file.endswith('.jpeg') or file.endswith('.gif')]
 
 
-def load_and_preprocess_images(input_dir_or_filelist, threshold_value=None, normalization_range=(-1, 1), output_channels=1, contrast_optimization_range=None):
+def load_and_preprocess_images(input_dir_or_filelist, threshold_value=None, normalization_range=(-1, 1), output_channels=1, contrast_optimization_range=None, return_as_numpy=True):
     images = []
     if isinstance(input_dir_or_filelist, str) or isinstance(input_dir_or_filelist, os.PathLike):
         if os.path.isdir(input_dir_or_filelist):
@@ -326,4 +327,7 @@ def load_and_preprocess_images(input_dir_or_filelist, threshold_value=None, norm
 
         images.append(image)
 
-    return np.array(images, dtype='float32')
+    if return_as_numpy:
+        return np.array(images, dtype='float32')
+    else:
+        return images
