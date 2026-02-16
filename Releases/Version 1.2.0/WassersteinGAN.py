@@ -410,7 +410,7 @@ class WGAN:
             grid_type = 'HEXAGONAL'
 
         for i in tqdm(range(0, no_of_images)):
-            img = np.zeros((img_height + 3*d, img_width + 3*d), dtype='uint8')
+            img = np.zeros((img_height + 4*d, img_width + 4*d), dtype='uint8')
             noise_image = None
             no_of_particles = 0
             if grid_type != 'HEXAGONAL' and grid_type != 'CUBIC':

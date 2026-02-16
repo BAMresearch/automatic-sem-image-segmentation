@@ -19,7 +19,7 @@ else:
 
 
 class ImageDataset:
-    def __init__(self, image_dir, mask_dir, contrast_optimization_range=(0.5, 99.5), use_brightness_and_contrast_augmentation=False):
+    def __init__(self, image_dir, mask_dir, contrast_optimization_range=(0.5, 99.5), use_brightness_and_contrast_augmentation=False, output_channels=1):
         self.image_ids = []
         self.image_info = {}
         self.type = ''
@@ -27,6 +27,7 @@ class ImageDataset:
         self.mask_dir = mask_dir
         self.contrast_optimization_range = contrast_optimization_range
         self.use_brightness_and_contrast_augmentation = use_brightness_and_contrast_augmentation
+        self.output_channels = output_channels
 
     def add_image(self, image_id, path, mask, augmentation):
         self.image_info[image_id] = {'id': image_id, 'image_path': path, 'mask_path': mask, 'augmentation': augmentation}
@@ -77,7 +78,7 @@ class ImageDataset:
 
             # Load image
             if is_mask:
-                image = HelperFunctions.load_and_preprocess_images(info['mask_path'], normalization_range=(0, 1), threshold_value=0.5)[0]
+                image = HelperFunctions.load_and_preprocess_images(info['mask_path'], normalization_range=(0, 1), threshold_value=0.5, output_channels=self.output_channels)[0]
             else:
                 if self.type == 'train':
                     if self.use_brightness_and_contrast_augmentation:
@@ -169,7 +170,13 @@ class UNet:
         self.lr_decay = 'STEP_DECAY'  # LINEAR_DECAY or STEP_DECAY
         self.image_shape = (384, 384, 1)
         self.filters = 16
-        self.output_channels = 1
+
+        # Infer number of output channels from mask shape
+        tmp = np.array(Image.open(os.path.join(self.mask_dir, os.listdir(self.mask_dir)[0])))
+        if len(tmp.shape) == 2 or tmp.shape[-1] == 1:
+            self.output_channels = 1
+        else:
+            self.output_channels = tmp.shape[-1]
 
         # GPU configuration
         self.allow_memory_growth = allow_memory_growth
@@ -248,8 +255,8 @@ class UNet:
             os.mkdir(os.path.join(self.model_dir, self.prefix))
 
         # Load the Training and Validation Datasets
-        self.dataset_train = ImageDataset(self.image_dir, self.mask_dir, self.contrast_optimization_range)
-        self.dataset_val = ImageDataset(self.image_dir, self.mask_dir, self.contrast_optimization_range)
+        self.dataset_train = ImageDataset(self.image_dir, self.mask_dir, self.contrast_optimization_range, output_channels=self.output_channels)
+        self.dataset_val = ImageDataset(self.image_dir, self.mask_dir, self.contrast_optimization_range, output_channels=self.output_channels)
         self.dataset_train.initialize_images('train')
         self.dataset_val.initialize_images('val')
 
@@ -300,7 +307,7 @@ class UNet:
 
             if model is None:
                 # Load the most recent model
-                self.model = keras.models.load_model(os.path.join(self.model_dir, os.listdir(self.model_dir)[-1], 'model.keras'), custom_objects={'weighted_bce': weighted_bce})
+                self.model = keras.models.load_model(os.path.join(self.model_dir, sorted(os.listdir(self.model_dir))[-1], 'model.keras'), custom_objects={'weighted_bce': weighted_bce})
             elif isinstance(model, str):
                 # Load the specified model
                 self.model = keras.models.load_model(model, custom_objects={'weighted_bce': weighted_bce})
@@ -309,46 +316,49 @@ class UNet:
         else:
             self.model = model
 
-        input_files = HelperFunctions.load_and_preprocess_images(files, normalization_range=(0, 1), contrast_optimization_range=self.contrast_optimization_range)
+        input_files_all = HelperFunctions.load_and_preprocess_images(files, normalization_range=(0, 1), contrast_optimization_range=self.contrast_optimization_range, return_as_numpy=False)
         file_names = HelperFunctions.get_image_file_paths_from_directory(files)
 
-        if not tile_images and input_files[0].shape != self.image_shape:
-            input_img = keras.layers.Input(shape=(input_files.shape[1], input_files.shape[2], 1))
-            multires_unet = UNet.multi_res_unet(input_img, output_channels=1, conv_filters=self.filters)
-            model_new = keras.models.Model(input_img, multires_unet)
-            model_new.set_weights(self.model.get_weights())
-            self.model = model_new
+        for j, inp in enumerate(tqdm(input_files_all)):
+            input_files = np.array([inp])
+            if not tile_images and input_files[0].shape != self.image_shape:
+                self.image_shape = input_files[0].shape
+                input_img = keras.layers.Input(shape=(input_files.shape[1], input_files.shape[2], 1))
+                multires_unet = UNet.multi_res_unet(input_img, output_channels=self.output_channels, conv_filters=self.filters)
+                model_new = keras.models.Model(input_img, multires_unet)
+                model_new.set_weights(self.model.get_weights())
+                self.model = model_new
 
-        if os.environ["KERAS_BACKEND"] == 'torch':
-            if use_gpu:
-                device = torch.device('cuda')
-            else:
-                device = torch.device('cpu')
-            self.model.to(device)
-
-        if use_gpu:
-            device = 'gpu:0'
-        else:
-            device = 'cpu'
-
-        with keras.device(device):
-            for i in tqdm(range(0, input_files.shape[0])):
-                input_file = input_files[i]
-                if tile_images:
-                    tiles = np.array(HelperFunctions.tile_image(input_file, self.image_shape[0], self.image_shape[1], min_overlap=min_overlap))
-                    prediction = np.array([UNet.to_numpy_array(self.model(img.reshape(1, img.shape[0], img.shape[1], img.shape[2]), training=False))[0] for img in tiles])
-                    img = HelperFunctions.stitch_image(prediction, input_file.shape[1], input_file.shape[0], min_overlap=min_overlap, manage_overlap_mode=manage_overlap_mode)
+            if os.environ["KERAS_BACKEND"] == 'torch':
+                if use_gpu:
+                    device = torch.device('cuda')
                 else:
-                    prediction = UNet.to_numpy_array(self.model(input_file.reshape(1, input_file.shape[0], input_file.shape[1], input_file.shape[2]), training=False))
-                    img = prediction[0].copy()
-                img = img[:, :, 0]
-                Image.fromarray(img).save(os.path.join(output_directory, os.path.split(file_names[i])[-1].replace(os.path.splitext(file_names[i])[-1], '_raw.tif')))
-                img -= np.min(img)
-                img /= np.max(img)
-                img *= 255
-                img = img.astype(np.uint8)
-                img = HelperFunctions.segment(image=img, threshold=threshold, watershed_lines=watershed_lines, min_distance=min_distance, use_four_connectivity=True)
-                Image.fromarray(img).save(os.path.join(output_directory, os.path.split(file_names[i])[-1]))
+                    device = torch.device('cpu')
+                self.model.to(device)
+
+            if use_gpu:
+                device = 'gpu:0'
+            else:
+                device = 'cpu'
+
+            with keras.device(device):
+                for i in range(0, input_files.shape[0]):
+                    input_file = input_files[i]
+                    if tile_images:
+                        tiles = np.array(HelperFunctions.tile_image(input_file, self.image_shape[0], self.image_shape[1], min_overlap=min_overlap))
+                        prediction = np.array([UNet.to_numpy_array(self.model(img.reshape(1, img.shape[0], img.shape[1], img.shape[2]), training=False))[0] for img in tiles])
+                        img = HelperFunctions.stitch_image(prediction, input_file.shape[1], input_file.shape[0], min_overlap=min_overlap, manage_overlap_mode=manage_overlap_mode)
+                    else:
+                        prediction = UNet.to_numpy_array(self.model(input_file.reshape(1, input_file.shape[0], input_file.shape[1], input_file.shape[2]), training=False))
+                        img = prediction[0].copy()
+                    img = img[:, :, 0]
+                    Image.fromarray(img).save(os.path.join(output_directory, os.path.split(file_names[j])[-1].replace(os.path.splitext(file_names[i])[-1], '_raw.tif')))
+                    img -= np.min(img)
+                    img /= np.max(img)
+                    img *= 255
+                    img = img.astype(np.uint8)
+                    img = HelperFunctions.segment(image=img, threshold=threshold, watershed_lines=watershed_lines, min_distance=min_distance, use_four_connectivity=True)
+                    Image.fromarray(img).save(os.path.join(output_directory, os.path.split(file_names[j])[-1]))
 
     @staticmethod
     def to_numpy_array(x):
@@ -361,27 +371,45 @@ class UNet:
             return x.numpy().copy()
 
     def create_model(self):
-        if self.use_dataloader:
-            zeros = 0
-            ones = 0
-            tmp = None
-            for index in range(0, len(self.dataset_train.image_ids)):
-                tmp = np.array(self.dataset_train.load_from_file(self.dataset_train.image_ids[index], is_mask=True))
-                zeros += np.count_nonzero(tmp == 0)
-                ones += np.count_nonzero(tmp)
-            weighting = zeros / ones
-            self.image_shape = tmp.shape[1:3]
+        if self.output_channels == 1:
+            if self.use_dataloader:
+                zeros = 0
+                ones = 0
+                tmp = None
+                for index in range(0, len(self.dataset_train.image_ids)):
+                    tmp = np.array(self.dataset_train.load_from_file(self.dataset_train.image_ids[index], is_mask=True))
+                    zeros += np.count_nonzero(tmp == 0)
+                    ones += np.count_nonzero(tmp)
+                weighting = zeros / ones
+                self.image_shape = tmp.shape[1:3]
+            else:
+                weighting = np.count_nonzero(self.training_data.y == 0) / np.count_nonzero(self.training_data.y)
+                self.image_shape = self.training_data.y.shape[1:3]
+
+            # Custom weight function for class weight balancing
+            unweighted_bce = keras.losses.BinaryCrossentropy(from_logits=False, reduction='none')
+
+            def weighted_bce(y_true, y_pred):
+                weights = (y_true * (weighting - 1)) + 1
+                bce = keras.ops.expand_dims(unweighted_bce(y_true, y_pred), -1)
+                return keras.ops.mean(bce * weights)
+
+            loss_fn = weighted_bce
         else:
-            weighting = np.count_nonzero(self.training_data.y == 0) / np.count_nonzero(self.training_data.y)
-            self.image_shape = self.training_data.y.shape[1:3]
+            if self.use_dataloader:
+                tmp = None
+                weights = np.zeros(self.output_channels)
+                for index in range(0, len(self.dataset_train.image_ids)):
+                    tmp = np.array(self.dataset_train.load_from_file(self.dataset_train.image_ids[index], is_mask=True))
+                    weights += np.sum(tmp, axis=(0, 1, 2))
+                weights /= np.sum(weights)
+                self.image_shape = tmp.shape[1:3]
+            else:
+                weights = np.sum(self.training_data.y, axis=(0, 1, 2))
+                weights /= np.sum(weights)
+                self.image_shape = self.training_data.y.shape[1:3]
 
-        # Custom weight function for class weight balancing
-        unweighted_bce = keras.losses.BinaryCrossentropy(from_logits=False, reduction='none')
-
-        def weighted_bce(y_true, y_pred):
-            weights = (y_true * (weighting - 1)) + 1
-            bce = keras.ops.expand_dims(unweighted_bce(y_true, y_pred), -1)
-            return keras.ops.mean(bce * weights)
+            loss_fn = keras.losses.CategoricalFocalCrossentropy(alpha=1/weights, gamma=2.0, from_logits=False)
 
         input_layer = keras.layers.Input(shape=(self.image_shape[0], self.image_shape[1], 1))
         multires_unet = UNet.multi_res_unet(input_layer, output_channels=self.output_channels, conv_filters=self.filters)
@@ -392,7 +420,7 @@ class UNet:
         else:
             opt = keras.optimizers.Adam(learning_rate=self.learning_rate, weight_decay=0.0)
 
-        model.compile(loss=weighted_bce, optimizer=opt, metrics=['mae', 'acc'])
+        model.compile(loss=loss_fn, optimizer=opt, metrics=['mae', 'acc'])
         return model
 
     ########################

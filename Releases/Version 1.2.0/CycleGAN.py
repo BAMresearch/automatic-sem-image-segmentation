@@ -237,53 +237,56 @@ class CycleGAN:
         else:
             generator_model = self.model.gen_b
 
-        input_files = HelperFunctions.load_and_preprocess_images(files, normalization_range=(-1, 1))
+        input_files_all = HelperFunctions.load_and_preprocess_images(files, normalization_range=(-1, 1), return_as_numpy=False)
         file_names = HelperFunctions.get_image_file_paths_from_directory(files)
 
-        if not tile_images and input_files[0].shape != self.image_shape:
-            self.image_shape = input_files[0].shape
-            model_new = self.create_model()
-            if 'a' in source_domain.lower():
-                generator_model_new = model_new.gen_a
-            else:
-                generator_model_new = model_new.gen_b
-            generator_model_new.set_weights(generator_model.get_weights())
-            generator_model = generator_model_new
+        for j, inp in enumerate(tqdm(input_files_all)):
+            input_files = np.array([inp])
 
-        if os.environ["KERAS_BACKEND"] == 'torch':
-            if use_gpu:
-                device = torch.device('cuda')
-            else:
-                device = torch.device('cpu')
-            generator_model.to(device)
-
-        if use_gpu:
-            device = 'gpu:0'
-        else:
-            device = 'cpu'
-
-        with keras.device(device):
-            for i in tqdm(range(0, input_files.shape[0])):
-                input_file = input_files[i]
-                if 'a' in source_domain.lower() and self.invert_images:
-                    input_file *= -1
-                if tile_images:
-                    tiles = np.asarray(HelperFunctions.tile_image(input_file, self.image_shape[0], self.image_shape[1], min_overlap=min_overlap))
-                    # prediction = np.asarray([CycleGanModel.to_numpy_array(self._generate_image(generator_model, img.reshape(1, img.shape[0], img.shape[1], img.shape[2]), device))[0] for img in tiles])
-                    prediction = np.asarray([CycleGanModel.to_numpy_array(generator_model(img.reshape(1, img.shape[0], img.shape[1], img.shape[2]), training=False))[0] for img in tiles])
-                    img = HelperFunctions.stitch_image(prediction, input_file.shape[1], input_file.shape[0], min_overlap=min_overlap, manage_overlap_mode=manage_overlap_mode)
+            if not tile_images and input_files[0].shape != self.image_shape:
+                self.image_shape = input_files[0].shape
+                model_new = self.create_model()
+                if 'a' in source_domain.lower():
+                    generator_model_new = model_new.gen_a
                 else:
-                    # prediction = CycleGanModel.to_numpy_array(self._generate_image(generator_model, input_file.reshape(1, input_file.shape[0], input_file.shape[1], input_file.shape[2]), device))
-                    prediction = CycleGanModel.to_numpy_array(generator_model(input_file.reshape(1, input_file.shape[0], input_file.shape[1], input_file.shape[2]), training=False))
-                    img = prediction[0].copy()
-                img = img[:, :, 0]
-                if 'b' in source_domain.lower() and self.invert_images:
-                    img *= -1
-                img -= np.min(img)
-                img /= np.max(img)
-                img *= 255
-                img = img.astype(np.uint8)
-                Image.fromarray(img).save(os.path.join(output_directory, os.path.split(file_names[i])[-1]))
+                    generator_model_new = model_new.gen_b
+                generator_model_new.set_weights(generator_model.get_weights())
+                generator_model = generator_model_new
+
+            if os.environ["KERAS_BACKEND"] == 'torch':
+                if use_gpu:
+                    device = torch.device('cuda')
+                else:
+                    device = torch.device('cpu')
+                generator_model.to(device)
+
+            if use_gpu:
+                device = 'gpu:0'
+            else:
+                device = 'cpu'
+
+            with keras.device(device):
+                for i in range(0, input_files.shape[0]):
+                    input_file = input_files[i]
+                    if 'a' in source_domain.lower() and self.invert_images:
+                        input_file *= -1
+                    if tile_images:
+                        tiles = np.asarray(HelperFunctions.tile_image(input_file, self.image_shape[0], self.image_shape[1], min_overlap=min_overlap))
+                        # prediction = np.asarray([CycleGanModel.to_numpy_array(self._generate_image(generator_model, img.reshape(1, img.shape[0], img.shape[1], img.shape[2]), device))[0] for img in tiles])
+                        prediction = np.asarray([CycleGanModel.to_numpy_array(generator_model(img.reshape(1, img.shape[0], img.shape[1], img.shape[2]), training=False))[0] for img in tiles])
+                        img = HelperFunctions.stitch_image(prediction, input_file.shape[1], input_file.shape[0], min_overlap=min_overlap, manage_overlap_mode=manage_overlap_mode)
+                    else:
+                        # prediction = CycleGanModel.to_numpy_array(self._generate_image(generator_model, input_file.reshape(1, input_file.shape[0], input_file.shape[1], input_file.shape[2]), device))
+                        prediction = CycleGanModel.to_numpy_array(generator_model(input_file.reshape(1, input_file.shape[0], input_file.shape[1], input_file.shape[2]), training=False))
+                        img = prediction[0].copy()
+                    img = img[:, :, 0]
+                    if 'b' in source_domain.lower() and self.invert_images:
+                        img *= -1
+                    img -= np.min(img)
+                    img /= np.max(img)
+                    img *= 255
+                    img = img.astype(np.uint8)
+                    Image.fromarray(img).save(os.path.join(output_directory, os.path.split(file_names[j])[-1]))
 
     @staticmethod
     def load_images(image_list, scale_for_binary_crossentropy=False, invert=False):
